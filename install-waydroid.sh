@@ -1,6 +1,9 @@
 #!/bin/bash
 #
-# Waydroid Installer for CachyOS/Arch Linux
+# Waydroid Installer for Arch-based Linux Distributions
+# Comprehensive automated setup for Waydroid with optional features
+#
+# Supports: Arch Linux, Garuda, CachyOS, EndeavourOS, and other Arch-based distros
 # Based on: https://github.com/dougbug589/waydroid-guide-cachyos-arch
 #
 # Usage: ./install-waydroid.sh
@@ -42,12 +45,18 @@ if [[ $EUID -eq 0 ]]; then
    exit 1
 fi
 
+# Get username for later use
+SCRIPT_USER="${SUDO_USER:-$USER}"
+SCRIPT_HOME=$(eval echo ~$SCRIPT_USER)
+
 # Check if running Wayland
 print_step "Checking prerequisites..."
-if [[ -z "$WAYLAND_DISPLAY" ]]; then
-    print_warning "Not running Wayland session. Waydroid requires Wayland!"
+if [[ -z "$WAYLAND_DISPLAY" ]] && [[ -z "$WAYLAND_SOCKET" ]]; then
+    print_warning "Not running in a Wayland session. Waydroid requires Wayland!"
+    echo "Current session type: $XDG_SESSION_TYPE"
     read -p "Continue anyway? (y/N): " continue_anyway
     if [[ ! "$continue_anyway" =~ ^[Yy]$ ]]; then
+        print_error "Installation cancelled. Please switch to a Wayland session."
         exit 1
     fi
 fi
@@ -69,14 +78,27 @@ else
     print_success "Waydroid installed"
 fi
 
-# Load binder modules
-print_step "Loading binder modules..."
-if ! lsmod | grep -q binder; then
-    print_info "Loading binder_linux and ashmem_linux modules..."
-    sudo modprobe binder_linux || print_warning "Failed to load binder_linux (might already be built-in)"
-    sudo modprobe ashmem_linux || print_warning "Failed to load ashmem_linux (might already be built-in)"
+# Check kernel for binder support
+print_step "Checking kernel for binder module support..."
+KERNEL_NAME=$(uname -r)
+print_info "Current kernel: $KERNEL_NAME"
+
+if zgrep -q "CONFIG_ANDROID=y" /proc/config.gz 2>/dev/null; then
+    print_success "Kernel has Android/binder support built-in"
+elif modprobe -n binder_linux &>/dev/null; then
+    print_success "Binder module is available"
 else
-    print_info "Binder modules already loaded"
+    print_warning "No built-in binder support detected"
+    echo "Consider installing one of these kernels:"
+    echo "  - linux-zen (Arch default)"
+    echo "  - linux-cachyos (CachyOS optimized)"
+    echo "  - linux-xanmod (high performance)"
+    echo "  - Or install: sudo pacman -S binder_linux-dkms"
+    read -p "Continue anyway? (y/N): " continue_kernel
+    if [[ ! "$continue_kernel" =~ ^[Yy]$ ]]; then
+        print_error "Installation cancelled. Please install proper kernel first."
+        exit 1
+    fi
 fi
 
 # Mount binderfs
@@ -111,23 +133,37 @@ print_success "binderfs systemd service created and enabled"
 
 # Initialize Waydroid
 print_step "Initializing Waydroid..."
+read -p "Install Google Play Store (GApps)? (y/N): " install_gapps
+
 if [[ -d /var/lib/waydroid ]]; then
     print_warning "Waydroid already initialized"
     read -p "Re-initialize? This will reset everything (y/N): " reinit
     if [[ "$reinit" =~ ^[Yy]$ ]]; then
-        sudo waydroid init -f
+        if [[ "$install_gapps" =~ ^[Yy]$ ]]; then
+            sudo waydroid init -s GAPPS -f
+        else
+            sudo waydroid init -f
+        fi
+    else
+        print_info "Keeping existing Waydroid installation"
     fi
 else
-    sudo waydroid init -f
+    if [[ "$install_gapps" =~ ^[Yy]$ ]]; then
+        sudo waydroid init -s GAPPS
+        print_success "Waydroid initialized with GApps"
+    else
+        sudo waydroid init
+        print_success "Waydroid initialized (no GApps)"
+    fi
 fi
-print_success "Waydroid initialized"
 
 # Enable and start services
-print_step "Enabling Waydroid services..."
+print_step "Enabling and starting Waydroid services..."
+sudo systemctl daemon-reload
 sudo systemctl enable --now waydroid-container.service
 sudo systemctl enable --now waydroid-container.socket
 sudo systemctl mask waydroid-container-freeze.timer
-print_success "Waydroid services enabled"
+print_success "Waydroid services enabled and started"
 
 # Configure UFW (if installed)
 if command -v ufw &> /dev/null; then
@@ -144,40 +180,45 @@ fi
 
 # Install waydroid_script for GApps and ARM support
 print_step "Optional: Install Google Apps and ARM support"
-read -p "Install waydroid_script for GApps/ARM translation? (y/N): " install_script
+read -p "Install waydroid-script for GApps/ARM translation? (y/N): " install_script
 if [[ "$install_script" =~ ^[Yy]$ ]]; then
-    SCRIPT_DIR="$HOME/.local/share/waydroid_script"
-    
-    if [[ -d "$SCRIPT_DIR" ]]; then
-        print_info "waydroid_script already exists at $SCRIPT_DIR"
-    else
-        print_info "Cloning waydroid_script..."
-        git clone https://github.com/casualsnek/waydroid_script "$SCRIPT_DIR"
-        cd "$SCRIPT_DIR"
-        python3 -m venv venv
-        venv/bin/pip install -r requirements.txt
+    # Check if waydroid-helper is available (GUI alternative)
+    if pacman -Q waydroid-helper &> /dev/null; then
+        print_info "waydroid-helper (GUI) is available: sudo pacman -S waydroid-helper"
     fi
     
-    print_info "Launching waydroid_script..."
-    print_warning "Use the menu to install GApps and ARM translation"
-    cd "$SCRIPT_DIR"
-    sudo venv/bin/python3 main.py
+    # Try to install from repos first
+    if pacman -Q waydroid-script-git &> /dev/null; then
+        print_info "waydroid-script already installed from repos"
+        sudo waydroid-extras
+    else
+        print_info "Installing waydroid-script-git..."
+        sudo pacman -S --noconfirm waydroid-script-git
+        sudo waydroid-extras
+    fi
 fi
 
 # Setup file sharing
 print_step "Optional: Setup file sharing with Android"
-read -p "Setup ~/Downloads/waydroid folder sharing? (y/N): " setup_share
+read -p "Setup file sharing folder? (y/N): " setup_share
 if [[ "$setup_share" =~ ^[Yy]$ ]]; then
-    mkdir -p "$HOME/Downloads/waydroid"
-    sudo mkdir -p "$HOME/.local/share/waydroid/data/media/0/waydroid"
+    SHARE_PATH="$SCRIPT_HOME/SharedWithAndroid"
+    MOUNT_TARGET="$SCRIPT_HOME/.local/share/waydroid/data/media/0/SharedFolder"
     
-    # Add to fstab
-    MOUNT_LINE="$HOME/Downloads/waydroid $HOME/.local/share/waydroid/data/media/0/waydroid none bind 0 0"
-    if ! grep -q "waydroid/data/media/0/waydroid" /etc/fstab; then
+    mkdir -p "$SHARE_PATH"
+    sudo mkdir -p "$MOUNT_TARGET"
+    
+    # Mount it
+    sudo mount --bind "$SHARE_PATH" "$MOUNT_TARGET" 2>/dev/null || print_warning "Could not mount immediately"
+    
+    # Add to fstab for persistence
+    MOUNT_LINE="$SHARE_PATH $MOUNT_TARGET none bind 0 0"
+    if ! grep -q "$MOUNT_TARGET" /etc/fstab; then
         print_info "Adding bind mount to /etc/fstab..."
         echo "$MOUNT_LINE" | sudo tee -a /etc/fstab > /dev/null
         sudo mount -a
         print_success "File sharing configured (persistent)"
+        print_info "Access shared files at: /sdcard/SharedFolder in Waydroid"
     else
         print_info "Bind mount already in /etc/fstab"
     fi
@@ -192,15 +233,15 @@ if [[ "$setup_autostart" =~ ^[Yy]$ ]]; then
     sudo tee /usr/local/bin/start-waydroid.sh > /dev/null <<'EOF'
 #!/bin/bash
 # Start Waydroid container & session
-systemctl start waydroid-container.service
+sudo systemctl start waydroid-container.service
 waydroid session start
 EOF
     sudo chmod +x /usr/local/bin/start-waydroid.sh
     
     # Create desktop entry
     print_info "Creating desktop entry..."
-    mkdir -p "$HOME/.local/share/applications"
-    cat > "$HOME/.local/share/applications/waydroid-start.desktop" <<'EOF'
+    mkdir -p "$SCRIPT_HOME/.local/share/applications"
+    cat > "$SCRIPT_HOME/.local/share/applications/waydroid-start.desktop" <<'EOF'
 [Desktop Entry]
 Name=Start Waydroid
 Comment=Start Waydroid container and session
@@ -209,14 +250,15 @@ Icon=waydroid
 Type=Application
 Terminal=false
 StartupNotify=true
+Categories=Utility;
 EOF
-    chmod +x "$HOME/.local/share/applications/waydroid-start.desktop"
-    update-desktop-database "$HOME/.local/share/applications/" 2>/dev/null || true
+    chmod +x "$SCRIPT_HOME/.local/share/applications/waydroid-start.desktop"
+    update-desktop-database "$SCRIPT_HOME/.local/share/applications/" 2>/dev/null || true
     
     # Configure sudoers
     print_info "Configuring sudoers for passwordless systemctl..."
-    SUDOERS_LINE="$USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl start waydroid-container.service"
-    SUDOERS_FILE="/etc/sudoers.d/waydroid-$USER"
+    SUDOERS_LINE="$SCRIPT_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl start waydroid-container.service"
+    SUDOERS_FILE="/etc/sudoers.d/waydroid-$SCRIPT_USER"
     
     echo "$SUDOERS_LINE" | sudo tee "$SUDOERS_FILE" > /dev/null
     sudo chmod 0440 "$SUDOERS_FILE"
@@ -232,17 +274,38 @@ print_success "Waydroid has been installed successfully!"
 echo ""
 print_info "Next steps:"
 echo "  1. Start Waydroid: waydroid show-full-ui"
-echo "  2. Or use the 'Start Waydroid' launcher from your app menu"
+echo "  2. Or use the 'Start Waydroid' launcher from your application menu"
 echo "  3. Install apps: waydroid app install /path/to/app.apk"
-echo "  4. List apps: waydroid app list"
+echo "  4. List installed apps: waydroid app list"
+echo "  5. Check status: waydroid status"
+echo ""
+print_info "Useful commands:"
+echo "  - View logs: journalctl -u waydroid-container -f"
+echo "  - Check Android version: waydroid shell getprop ro.build.version.release"
+echo "  - Open shell: sudo waydroid shell"
+echo ""
+print_info "For more information, see: https://docs.waydro.id/"
 echo ""
 
-read -p "Start Waydroid now? (y/N): " start_now
+read -p "Start Waydroid session now? (y/N): " start_now
 if [[ "$start_now" =~ ^[Yy]$ ]]; then
     print_info "Starting Waydroid session..."
+    print_warning "Waiting for container to start (this may take a minute)..."
     waydroid session start &
-    sleep 2
-    waydroid show-full-ui
+    SESSION_PID=$!
+    
+    # Wait for session to be ready
+    for i in {1..30}; do
+        if waydroid status 2>/dev/null | grep -q "RUNNING"; then
+            print_success "Waydroid session is ready!"
+            break
+        fi
+        sleep 2
+    done
+    
+    print_info "Launching Waydroid UI..."
+    waydroid show-full-ui &
+    wait $SESSION_PID 2>/dev/null || true
 fi
 
-print_success "Done! Enjoy Waydroid on CachyOS!"
+print_success "Done! Enjoy Waydroid!"
