@@ -17,6 +17,8 @@
 
 This is how I got [Waydroid](https://waydro.id/) working on [CachyOS](https://cachyos.org/) Linux. It's not a comprehensive guide, just my process with the stuff that actually worked for me.
 
+> **⚠️ Disclaimer:** This is a community guide based on personal experience, not official documentation. Always review commands before running them. Your mileage may vary.
+
 ---
 
 ## 📦 What is Waydroid?
@@ -94,6 +96,29 @@ mount | grep binder
 
 The binderfs mount was the key step that made everything work properly.
 
+**To make binderfs mount permanent**, create `/etc/systemd/system/binderfs.service`:
+
+```ini
+[Unit]
+Description=Mount binderfs for Waydroid
+DefaultDependencies=no
+Before=waydroid-container.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/mount -t binder binder /dev/binderfs
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then enable it:
+
+```bash
+sudo systemctl enable binderfs.service
+```
+
 ### Clean Slate After Trial and Error
 
 After messing around with different things, I had to do a complete reset. I even reinstalled Waydroid from the official repos instead of AUR:
@@ -134,6 +159,8 @@ sudo ufw allow 67
 sudo ufw default allow FORWARD
 ```
 
+> **⚠️ Note:** The `allow FORWARD` rule affects your firewall's forwarding policy. This is necessary for Waydroid networking but be aware of the security implications.
+
 ## 📱 Installing Google Apps and ARM Support
 
 I used [waydroid_script](https://github.com/casualsnek/waydroid_script) to add GApps and ARM translation:
@@ -168,6 +195,14 @@ mount | grep waydroid
 ```
 
 Now files in `~/Downloads/waydroid` are accessible from Android in the `/sdcard/waydroid` folder.
+
+> **⚠️ Note:** This bind mount is temporary and won't survive a reboot.
+
+**To make it permanent**, add this line to `/etc/fstab` (replace `YOUR_USERNAME`):
+
+```
+/home/YOUR_USERNAME/Downloads/waydroid /home/YOUR_USERNAME/.local/share/waydroid/data/media/0/waydroid none bind 0 0
+```
 
 ## 🚀 Auto-Start Without Password
 
@@ -220,11 +255,16 @@ Edit sudoers file:
 EDITOR=nano sudo visudo
 ```
 
-Add this line (replace `YOUR_USERNAME` with your actual username):
+Add this line (**⚠️ IMPORTANT:** replace `YOUR_USERNAME` with your actual username, e.g., `mak`):
 
 ```
 YOUR_USERNAME ALL=(ALL) NOPASSWD: /usr/bin/systemctl start waydroid-container.service
 ```
+
+> **Example:** If your username is `mak`, the line should be:
+> ```
+> mak ALL=(ALL) NOPASSWD: /usr/bin/systemctl start waydroid-container.service
+> ```
 
 Now you can start Waydroid from your application menu, and once it's running, you can launch Android apps directly without opening the full UI.
 
