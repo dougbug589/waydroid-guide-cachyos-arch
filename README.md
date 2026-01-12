@@ -1,13 +1,13 @@
 <div align="center">
 
-# Waydroid Setup Guide for Linux
+# Complete Waydroid Setup Guide for Linux
 
 ![Waydroid](https://img.shields.io/badge/Waydroid-Android_Container-3DDC84?style=for-the-badge&logo=android)
-![Linux](https://img.shields.io/badge/Linux-Multiple_Distros-FCC624?style=for-the-badge&logo=linux)
+![Linux](https://img.shields.io/badge/Linux-Arch_Based-FCC624?style=for-the-badge&logo=linux)
 ![Wayland](https://img.shields.io/badge/Wayland-Required-1D99F3?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
-**Run Android apps natively on Linux with hardware acceleration**
+**Run Android natively on Linux with hardware acceleration - Complete, beginner-friendly guide**
 
 [Official Waydroid](https://waydro.id/) • [Documentation](https://docs.waydro.id/) • [ArchWiki](https://wiki.archlinux.org/title/Waydroid) • [GitHub](https://github.com/waydroid/waydroid)
 
@@ -17,70 +17,114 @@
 
 ## 📦 What is Waydroid?
 
-[Waydroid](https://waydro.id/) is a rebuild of Anbox, designed to provide faster performance by utilizing more of the host system's native hardware. Unlike traditional emulation, Waydroid uses a Linux container to run Android, enabling:
+**Waydroid** (formerly Anbox-Halium) is a rebuild of Anbox designed to provide **significantly faster performance** by utilizing more of the native host's hardware instead of pure emulation.
 
-- **Better Performance:** Hardware acceleration and direct GPU passthrough
-- **ARM Support:** ARM and ARM64 apps work seamlessly (yes, they do!)
-- **Native Integration:** Android apps appear as native Linux applications
-- **Lightweight:** Container-based instead of full VM emulation
-- **Multiple Architecture Support:** Works on ARM, ARM64, x86, and x86_64
+### Key Benefits:
+- ✅ **ARM apps work perfectly** - Including games and native ARM-only applications
+- ✅ **Hardware acceleration** - Direct GPU passthrough for Intel, AMD, Tegra
+- ✅ **Container-based** - Lightweight Linux container, not a full VM
+- ✅ **Native integration** - Android apps appear in your application menu
+- ✅ **Better performance** - Rebuilds Anbox with native hardware support
 
-For official documentation, check out [docs.waydro.id](https://docs.waydro.id/) and [ArchWiki Waydroid](https://wiki.archlinux.org/title/Waydroid)
+**Source:** [waydro.id](https://waydro.id/) | [ArchWiki](https://wiki.archlinux.org/title/Waydroid) | [GitHub](https://github.com/waydroid/waydroid)
 
 ---
 
-## ✅ Prerequisites
+## 🔧 Comprehensive Prerequisites
 
-### 1. Wayland Session Manager
-**Required:** Waydroid only works in Wayland sessions (not X11).
+### 1. Wayland Session (Required)
 
-Check if you're running Wayland:
+Waydroid **only works in Wayland sessions**, not X11.
+
+**Check your session type:**
 ```bash
 echo $XDG_SESSION_TYPE
 ```
 
-If it returns `x11`, you have options:
+Expected output: `wayland`
+
+**If you're on X11:**
 - Switch to a Wayland desktop environment (GNOME, KDE Plasma 6+, etc.)
-- Run a nested Wayland session (e.g., Weston) within X11
+- Or run a nested Wayland session inside X11 (simplest: [Weston](https://wayland.freedesktop.org/releases/weston-12.0.0.tar.xz))
 
 ### 2. Supported Hardware
 
-#### CPUs
-Waydroid supports: ARM, ARM64, x86, and x86_64 architectures on most platforms.
+#### CPUs Supported
+- **ARM** (mobile processors)
+- **ARM64** (newer mobile processors)
+- **x86** (older Intel/AMD)
+- **x86_64** (modern Intel/AMD) ← Most common
 
-#### GPUs
-- **Intel/AMD GPUs:** Full hardware acceleration supported via Mesa
-- **Nvidia GPUs (non-Tegra):** Use software rendering (see [Troubleshooting](#-troubleshooting))
-- **VMs:** Use software rendering
-- **Hybrid Setup (Integrated + Dedicated GPU):** Can select which GPU to use with Waydroid-Settings
+#### GPUs Supported
+Waydroid uses **Android's Mesa integration** for GPU passthrough.
 
-### 3. Kernel with Binder Modules
+| GPU Type | Support | Notes |
+|----------|---------|-------|
+| **Intel iGPU** | ✅ Full acceleration | Works great with Mesa |
+| **AMD iGPU/dGPU** | ✅ Full acceleration | Works great with Mesa |
+| **Nvidia (non-Tegra)** | ⚠️ Software rendering only | Use GPU forcing guide in troubleshooting |
+| **Nvidia Tegra** | ✅ Full acceleration | Mobile-focused Nvidia |
+| **Virtual Machines** | ⚠️ Software rendering | Use software rendering mode |
+| **Hybrid GPU (Intel+Nvidia, AMD+Nvidia)** | ✅ Selective acceleration | Use Waydroid-Settings to choose GPU |
 
-Your kernel must include binder module support. Choose **one** of the following:
+**Nvidia GPU Note:** If you have both Nvidia dedicated GPU and Intel/AMD integrated GPU, use [Waydroid-Settings](#waydroid-settings-gpu-selection) to route graphics through the integrated GPU.
 
-#### Option A: Use a kernel with built-in binder support (Recommended)
+### 3. Kernel with Binder Module Support (Critical)
 
-**Available kernels:**
-- **linux-zen** (Arch Linux default)
-- **linux-cachyos** or **linux-cachyos-lts** (CachyOS, available in chaotic-aur)
-- **linux-xanmod** (available in chaotic-aur)
+Your kernel must include **binder module support**. This is essential for Android container functionality.
 
-**Install via:**
+#### Option A: Install Kernel with Built-in Binder (Recommended)
+
+Choose **one** of these kernels (all include binder modules):
+
+**1) linux-zen** (Arch Linux default)
 ```bash
-# GUI method (Garuda users)
-Garuda Settings Manager → Hardware → Kernel
+sudo pacman -S linux-zen linux-zen-headers
+```
 
-# CLI method - Example for linux-xanmod
+**2) linux-cachyos** or **linux-cachyos-lts** (CachyOS optimized)
+```bash
+# Install from chaotic-aur
+sudo pacman -S linux-cachyos linux-cachyos-headers
+# or LTS version
+sudo pacman -S linux-cachyos-lts linux-cachyos-lts-headers
+```
+
+**3) linux-xanmod** (High performance, best for games)
+```bash
+# Install from chaotic-aur
 sudo pacman -S linux-xanmod linux-xanmod-headers
 ```
 
-**For linux-xanmod kernel, enable PSI:**
+**GUI Installation (Garuda users):**
+```
+Garuda Settings Manager → Hardware → Kernel
+```
+
+**For CachyOS kernel selection:**
+```bash
+# View available kernels
+sudo pacman -Ss cachyos-kernel
+
+# Install your choice
+sudo pacman -S linux-cachyos linux-cachyos-headers
+```
+
+#### Important: PSI Configuration for linux-xanmod
+
+If using **linux-xanmod**, enable PSI (Pressure Stall Information):
+
 ```bash
 # Edit GRUB configuration
 sudo nano /etc/default/grub
 
-# Add psi=1 to GRUB_CMDLINE_LINUX_DEFAULT
-# Example: GRUB_CMDLINE_LINUX_DEFAULT="... psi=1"
+# Find the line starting with GRUB_CMDLINE_LINUX_DEFAULT
+# Add psi=1 to the end (before any # symbols)
+
+# Example - change this:
+# GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"
+# To this:
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash psi=1"
 
 # Rebuild GRUB
 sudo grub-mkconfig -o /boot/grub/grub.cfg
@@ -89,86 +133,120 @@ sudo grub-mkconfig -o /boot/grub/grub.cfg
 sudo reboot
 ```
 
-#### Option B: Install binder_linux-dkms (for stock kernels)
+#### Option B: Use Stock Kernel + binder_linux-dkms
 
-Use this if your kernel doesn't have built-in binder support:
+If using Arch's stock kernel or another kernel without binder:
+
 ```bash
 sudo pacman -S binder_linux-dkms
 ```
 
-#### Verify binder modules are available:
+This installs binder modules via DKMS (automatically built for your kernel).
+
+#### Verify Binder Module Support
+
+**Test if binder is available:**
 ```bash
-# Test if binder module loads
+# Try loading binder module
 sudo modprobe -a binder
 
-# or try
+# Or with alternate name
 sudo modprobe -a binder_linux
 
-# If the command returns with no output, your kernel has binder support
+# If no error output, you're good!
+# If error "module not found", install binder_linux-dkms
 ```
+
+**Check kernel Android config:**
+```bash
+zgrep ANDROID /proc/config.gz
+```
+
+Look for: `CONFIG_ANDROID=y`
 
 ---
 
-## 🚀 Quick Installation
+## 📋 Complete Dependencies & Packages
 
-### Automated Installation (Recommended)
-
-Use the provided installation script:
+### Required Packages
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/dougbug589/waydroid-guide-cachyos-arch/main/install-waydroid.sh -o install-waydroid.sh
-chmod +x install-waydroid.sh
-sudo ./install-waydroid.sh
+# Core Waydroid
+sudo pacman -S waydroid
+
+# If not using kernel with built-in binder
+sudo pacman -S binder_linux-dkms
+
+# Firewall (if using UFW)
+sudo pacman -S ufw
 ```
 
-The script automates:
-- Waydroid installation
-- Binder modules and binderfs setup
-- Service configuration and enablement
-- Optional GApps and ARM translation installation
-- Auto-start launcher setup
-- File sharing configuration
-
-### Manual Installation
-
-If you prefer manual setup, continue to the **[Manual Installation & Setup](#-manual-installation--setup)** section below.
-
----
-
-## 💻 System Information
-
-This guide covers:
-- **Distributions:** Arch Linux, Garuda, CachyOS, EndeavourOS, and other Arch-based distros
-- **Desktop Environments:** KDE Plasma, GNOME, and others (any with Wayland support)
-- **GPU Configurations:** Intel, AMD, and Nvidia
-
-Tested with:
-- CachyOS with linux-cachyos kernel
-- KDE Plasma on Wayland
-- Various GPU setups
-
----
-
-## 📥 Manual Installation & Setup
-
-### Step 1: Install Waydroid Package
-
-Update your system and install Waydroid:
+### Recommended Packages
 
 ```bash
-sudo pacman -Syu waydroid
+# GApps and ARM translation helper (GUI)
+sudo pacman -S waydroid-helper
+
+# GApps and ARM translation helper (CLI)
+sudo pacman -S waydroid-script-git
+
+# System utilities
+sudo pacman -S android-tools  # adb, fastboot
+sudo pacman -S android-udev   # Device rules
+
+# GPU settings manager
+sudo pacman -S waydroid-settings
+
+# VPN (if slow downloads)
+sudo pacman -S riseup-vpn
+
+# Text editors (for config editing)
+sudo pacman -S nano  # or vim, nano, gedit, etc.
 ```
 
-For CachyOS or systems with chaotic-aur:
+### Optional Packages for Enhanced Functionality
+
+```bash
+# App stores
+waydroid app install f-droid.apk
+waydroid app install aurora-store.apk
+
+# Key mapper for games
+waydroid app install keymapper.apk    # From F-Droid
+waydroid app install xtmapper.apk     # From GitHub
+
+# Root-like functionality
+waydroid app install shizuku.apk      # Install from Play Store or F-Droid
+
+# Android customization
+waydroid app install magisk.apk       # Requires linux-xanmod kernel
+```
+
+---
+
+## 🚀 Installation & Setup
+
+### Step 1: Update System
+
+```bash
+sudo pacman -Syu
+```
+
+### Step 2: Install Waydroid Package
+
 ```bash
 sudo pacman -S waydroid
 ```
 
-### Step 2: Initialize Waydroid
+For CachyOS users (from chaotic-aur):
+```bash
+# Waydroid is in chaotic-aur
+sudo pacman -S waydroid
+```
 
-Choose your initialization method:
+### Step 3: Initialize Waydroid
 
-**Basic initialization (no Google Play Store):**
+**Basic initialization:**
 ```bash
 sudo waydroid init
 ```
@@ -178,124 +256,41 @@ sudo waydroid init
 sudo waydroid init -s GAPPS
 ```
 
-**Force clean initialization (if re-installing):**
+**Force reinitialize (clean slate):**
 ```bash
 sudo waydroid init -f
 # or with GApps
 sudo waydroid init -s GAPPS -f
 ```
 
-The `waydroid init` command performs these steps:
-- Downloads the latest Android image from Waydroid repository
-- Sets up Waydroid configuration file
-- Configures runtime environment
-- Initializes the container
+**What `waydroid init` does:**
+1. Downloads latest Android image from Waydroid repository
+2. Sets up Waydroid configuration file (specifies image location, runtime, settings)
+3. Configures runtime environment
+4. Initializes the container
 
-> ⚠️ **Note:** Download speeds may be slow. If this occurs:
-> - Try connecting via VPN to a European server
-> - [Riseup-VPN](https://riseup.net/) is available in chaotic-aur: `sudo pacman -S riseup-vpn`
+> ⚠️ **Slow Downloads:** If downloads are very slow, use a VPN connected to Europe (many report better speeds).
+> Install via: `sudo pacman -S riseup-vpn` or use other VPN services.
 
-### Step 3: Configure and Enable Services
+### Step 4: Setup Kernel Modules (if needed)
 
-```bash
-# Enable and start the container service
-sudo systemctl enable --now waydroid-container.service
-sudo systemctl enable --now waydroid-container.socket
-
-# Prevent container from auto-freezing
-sudo systemctl mask waydroid-container-freeze.timer
-
-# Reboot to ensure all configurations are loaded
-sudo reboot
-```
-
-### Step 4: Start Waydroid Session
-
-**Recommended approach with systemctl:**
-
-Terminal:
-```bash
-# Start the container
-sudo systemctl start waydroid-container
-
-# Start the session
-waydroid session start
-
-# Wait for: "Android with user 0 is ready"
-```
-
-**Alternative approach without systemctl:**
-
-Terminal 1:
-```bash
-sudo waydroid container start
-```
-
-Terminal 2 (after container starts):
-```bash
-waydroid session start
-```
-
-### Step 5: Launch Waydroid
-
-Once the session shows "Android with user 0 is ready", launch Waydroid:
-
-```bash
-# Normal windowed mode
-waydroid show-full-ui
-
-# Full-screen mode (same command)
-waydroid show-full-ui
-```
-
-You can now launch Android apps from your application menu.
-
-### Step 6: Keep Waydroid Updated
-
-Regularly upgrade to the latest version:
-
-```bash
-sudo waydroid upgrade
-```
-
----
-
-## ⚠️ Common Issues & Solutions
-
-### Binder Module Issues
-
-#### Issue: binder modules not loading
-
-Check if binder is loaded:
-```bash
-lsmod | grep binder
-```
-
-Manually load modules:
+**Load binder modules manually:**
 ```bash
 sudo modprobe binder_linux
 sudo modprobe ashmem_linux
 ```
 
-Verify Android kernel configuration:
+**Mount binderfs:**
 ```bash
-zgrep ANDROID /proc/config.gz
-```
-
-#### Mounting binderfs
-
-If you have issues with binder, mount binderfs:
-
-```bash
-# Mount binderfs
+sudo mkdir -p /dev/binderfs
 sudo mount -t binder binder /dev/binderfs
 
-# Verify it's mounted
-ls /dev/binderfs
+# Verify
 mount | grep binder
+ls /dev/binderfs
 ```
 
-**Make binderfs mount persistent** by creating `/etc/systemd/system/binderfs.service`:
+**Make binderfs persistent** by creating `/etc/systemd/system/binderfs.service`:
 
 ```ini
 [Unit]
@@ -312,61 +307,348 @@ RemainAfterExit=yes
 WantedBy=multi-user.target
 ```
 
-Enable the service:
+Enable it:
 ```bash
 sudo systemctl enable binderfs.service
 ```
 
-### PSI Warning ([gbinder] WARNING: Service manager /dev/binder has died)
-
-If you see binder errors, enable PSI by default:
+### Step 5: Enable and Start Services
 
 ```bash
-# Edit GRUB configuration
-sudo nano /etc/default/grub
+# Enable and start container service
+sudo systemctl enable --now waydroid-container.service
+sudo systemctl enable --now waydroid-container.socket
 
-# Add psi=1 to GRUB_CMDLINE_LINUX_DEFAULT
-# Example: GRUB_CMDLINE_LINUX_DEFAULT="... psi=1"
+# Prevent automatic freezing
+sudo systemctl mask waydroid-container-freeze.timer
 
-# Rebuild GRUB
-sudo grub-mkconfig -o /boot/grub/grub.cfg
-
-# Reboot
+# Reboot to ensure everything loads
 sudo reboot
 ```
 
-### Complete Reset
+### Step 6: Start Waydroid Session
 
-If you encounter persistent errors after changing kernels or have made too many modifications:
-
+**With systemctl (recommended):**
 ```bash
-# Stop all Waydroid processes
-waydroid session stop
-sudo systemctl stop waydroid-container
-sudo systemctl disable waydroid-container
-sudo pkill -f waydroid
+# Terminal 1: Start container
+sudo systemctl start waydroid-container
 
-# Check for remaining processes
-ps aux | grep waydroid
+# Terminal 2: Start session
+waydroid session start
 
-# Clean up all Waydroid data and cache
-rm -rf ~/.cache/waydroid
-rm -rf ~/.local/share/waydroid
-sudo rm -rf /run/waydroid
-sudo rm -rf /usr/share/waydroid-extra
+# Wait for: "Android with user 0 is ready"
+```
 
-# Reinstall Waydroid
-sudo pacman -S waydroid
+**Without systemctl:**
+```bash
+# Terminal 1
+sudo waydroid container start
 
-# Start fresh
-sudo waydroid init -f
-sudo systemctl enable --now waydroid-container
+# Terminal 2 (wait for container to start)
 waydroid session start
 ```
 
-### Network Issues
+### Step 7: Launch Waydroid UI
 
-If Waydroid container can't access the network, configure UFW firewall:
+Once session shows "Android with user 0 is ready":
+
+```bash
+# Launch Waydroid
+waydroid show-full-ui
+
+# Full-screen mode (same command, press F11 in-app to toggle fullscreen)
+waydroid show-full-ui
+```
+
+### Step 8: Keep Updated
+
+```bash
+sudo waydroid upgrade
+```
+
+---
+
+## 📱 Installing GApps and ARM Translation
+
+### What You Need
+
+For full app compatibility, install:
+
+1. **GApps** (Google Play Store + Google services)
+2. **ARM Translation Library** (to run ARM-only apps on x86/x86_64)
+
+### Method 1: waydroid-helper GUI (Easiest)
+
+**Install:**
+```bash
+sudo pacman -S waydroid-helper
+# or download AppImage from GitHub
+```
+
+**Launch from application menu and install:**
+- Your preferred **GApps version:**
+  - **OpenGapps** - Standard, full-featured Google Apps
+  - **MindTheGapps** - Minimal, optimized (recommended for Android 13+)
+  - **LiteGapps** - Lightweight, minimal
+  
+- Your preferred **ARM Translation:**
+  - **libndk** (Google Chromiumos) - Better on AMD GPUs
+  - **libhoudini** (Intel) - Better on Intel CPUs
+
+> **Tip:** Only one ARM translation can be active (last installed overwrites previous)
+
+### Method 2: waydroid-script CLI (Interactive Menu)
+
+**Install:**
+```bash
+sudo pacman -S waydroid-script-git
+```
+
+**Run interactive menu:**
+```bash
+sudo waydroid-extras
+```
+
+**Choose from menu:**
+- GApps packages (OpenGapps, MindTheGapps, LiteGapps)
+- ARM translation (libndk, libhoudini)
+- Magisk (requires linux-xanmod kernel)
+- microG (open-source Google services)
+- Smart Dock (desktop launcher)
+- Widevine DRM (for streaming)
+
+**Android 13+ Compatibility Notes:**
+
+For **Android 13 ROMs**, special considerations:
+- **GApps:** Use **MindTheGapps** (designed for Android 13+)
+- **ARM Translation:** Use **ndk_translation-chromeos_zork** for best compatibility
+
+Check your Android version:
+1. Open Waydroid Settings app
+2. Go to About phone
+3. Note the Android version
+
+### Method 3: Direct Installation from Repos
+
+```bash
+# Install pre-built GApps image
+sudo pacman -S waydroid-image-gapps
+
+# Or reinitialize with GApps
+sudo waydroid init -s GAPPS -f
+
+# Restart container
+sudo systemctl restart waydroid-container
+```
+
+### Step-by-Step ARM Translation Comparison
+
+| Feature | libndk | libhoudini |
+|---------|--------|-----------|
+| **Creator** | Google (Chromiumos) | Intel |
+| **Better on** | AMD GPUs | Intel CPUs |
+| **Performance (AMD)** | ✅ Excellent | ⚠️ Frame drops |
+| **Performance (Intel)** | ✅ Good | ✅ Better |
+| **Tested with** | Games, apps | Games, apps |
+| **Android 13** | ✅ Recommended | ⚠️ Check compatibility |
+
+**Performance Test Example:** Angry Birds
+- On AMD with libhoudini: Frame drops, touch lag
+- On AMD with libndk: Perfect performance
+
+### Device Registration with Google
+
+To use Google Play Store, you must register your Waydroid device with Google.
+
+**Method A: Using waydroid-script**
+
+```bash
+# Start Waydroid session
+waydroid session start
+
+# In another terminal
+sudo waydroid-extras
+
+# Select: "Get Google Device ID to Get Certified"
+# Copy the returned numeric ID
+# Open: https://google.com/android/uncertified/?pli=1
+# Paste your device ID and submit registration
+# Wait 10-20 minutes for registration confirmation
+```
+
+After registration:
+```bash
+# Clear Google Play Services cache
+waydroid shell pm clear com.google.android.gms
+
+# Try logging in to Play Store
+```
+
+**Method B: Manual Registration**
+
+Within Waydroid Settings, use Google Account Management to register device directly.
+
+**Method C: Without waydroid-script**
+
+Check Waydroid documentation for manual registration steps.
+
+---
+
+## 🔐 Root Access & Permissions
+
+### Option 1: Magisk (Full Root) ⚠️ Xanmod Kernel Only
+
+**Requirements:**
+- Must use **linux-xanmod** kernel (Magisk doesn't work with other kernels)
+- Admin access needed
+
+**Install via waydroid-script:**
+```bash
+sudo waydroid-extras
+# Select: Magisk Delta
+# Follow on-screen instructions
+```
+
+**Detailed Magisk guides:**
+- https://github.com/casualsnek/waydroid_script#install-magisk
+- https://github.com/nitanmarcel/waydroid-magisk
+
+**Note:** Magisk Delta is the updated version supporting modern Android versions.
+
+### Option 2: Shizuku (ADB Permissions) ✅ Recommended
+
+**Why Shizuku?**
+- Works with **all kernels** (not just xanmod)
+- Covers ~99% of root-required use cases
+- Apps get ADB permissions instead of full root
+- Easier to set up and manage
+
+**Install Shizuku:**
+```bash
+# From Play Store (requires GApps)
+# or
+waydroid app install shizuku.apk  # From F-Droid
+```
+
+**Grant ADB Permissions (every session):**
+```bash
+# After Waydroid UI has launched:
+sudo waydroid shell sh /storage/emulated/0/Android/data/moe.shizuku.privileged.api/start.sh
+```
+
+**Automate with Alias:**
+
+Add to `~/.bashrc` or `~/.zshrc`:
+```bash
+alias waydroid-start='waydroid show-full-ui & sleep 10 && pkexec waydroid shell sh /storage/emulated/0/Android/data/moe.shizuku.privileged.api/start.sh'
+```
+
+**Adjust sleep duration** based on your system's Waydroid UI startup time:
+- Modern processor (2020+): 10 seconds
+- Mid-range processor (2017-2020): 20-30 seconds
+- Older processor (pre-2017): 60 seconds
+
+---
+
+## 🎮 Gaming & Input Mapping
+
+### Key Mapper Tools
+
+Map keyboard and mouse to game controls for better gameplay.
+
+#### Option 1: XtMapper
+
+Download APK from [GitHub releases](https://github.com/Xtr126/XtMapper/releases):
+```bash
+waydroid app install XtMapper.apk
+```
+
+#### Option 2: Key Mapper & Floating Buttons
+
+Available on [F-Droid](https://f-droid.org/) and Google Play Store:
+```bash
+waydroid app install keymapper.apk
+```
+
+**Tutorial:** [YouTube - How to use Key Mapper](https://www.youtube.com/results?search_query=key+mapper+tutorial)
+
+**Real-world test:** Need for Speed: No Limits
+- Keyboard mapped perfectly
+- **Zero input lag**
+- Smooth gameplay
+
+---
+
+## ⚙️ Waydroid-Settings: GPU Selection
+
+Install the GTK GUI tool:
+```bash
+sudo pacman -S waydroid-settings
+```
+
+**Launch from application menu.**
+
+**Features:**
+- Select which GPU to use (for dual-GPU systems)
+- Configure display settings
+- Manage Waydroid container
+- View system information
+
+**Dual-GPU Setup:**
+If you have Nvidia + Intel/AMD:
+1. Open Waydroid-Settings
+2. Select integrated GPU (Intel/AMD)
+3. Waydroid will use integrated GPU exclusively
+
+---
+
+## 📂 File Sharing Between Linux and Android
+
+### Quick Setup
+
+Create shared folder accessible from both systems:
+
+```bash
+# Create Linux folder
+mkdir -p ~/SharedWithAndroid
+
+# Create mount target
+sudo mkdir -p ~/.local/share/waydroid/data/media/0/SharedFolder
+
+# Bind mount (temporary)
+sudo mount --bind ~/SharedWithAndroid ~/.local/share/waydroid/data/media/0/SharedFolder
+
+# Verify
+mount | grep SharedFolder
+```
+
+**Access in Waydroid:** Files appear at `/sdcard/SharedFolder`
+
+### Make File Sharing Permanent
+
+Add to `/etc/fstab` (replace `YOUR_USERNAME`):
+
+```
+/home/YOUR_USERNAME/SharedWithAndroid /home/YOUR_USERNAME/.local/share/waydroid/data/media/0/SharedFolder none bind 0 0
+```
+
+Example for user `mak`:
+```
+/home/mak/SharedWithAndroid /home/mak/.local/share/waydroid/data/media/0/SharedFolder none bind 0 0
+```
+
+Reload fstab:
+```bash
+sudo mount -a
+```
+
+---
+
+## 🌐 Network Configuration
+
+### UFW Firewall Setup
+
+If using UFW, configure for Waydroid networking:
 
 ```bash
 # Allow DNS
@@ -379,192 +661,205 @@ sudo ufw allow 67
 sudo ufw default allow FORWARD
 ```
 
-> ⚠️ **Warning:** The `allow FORWARD` rule affects your firewall's forwarding policy. Be aware of the security implications.
+> ⚠️ **Security Note:** `allow FORWARD` affects firewall forwarding policy. Be aware of security implications in your network setup.
 
-### GPU/Rendering Issues
+### Network Troubleshooting
 
-#### Force Software Rendering
-
-If you have Nvidia GPU or VM issues:
+If Waydroid can't access the network:
 
 ```bash
-# Edit Waydroid base properties
-sudo nano /var/lib/waydroid/waydroid_base.prop
+# Check network status
+waydroid status
 
-# Add or modify this line
-WAYDROID_USE_SWVENC=1
+# Test connectivity
+waydroid shell ping 8.8.8.8
+
+# Check DNS
+waydroid shell cat /etc/resolv.conf
 ```
 
-#### Roblox and Games Running in Rotated Mode
+---
 
-For Roblox and similar games that display rotated:
+## 🛠️ Troubleshooting & Common Issues
+
+### Binder Module Issues
+
+**Error: Binder module not found**
 
 ```bash
-# Edit Waydroid base configuration
+# Check if loaded
+lsmod | grep binder
+
+# Load modules manually
+sudo modprobe binder_linux
+sudo modprobe ashmem_linux
+
+# Check kernel config
+zgrep ANDROID /proc/config.gz
+```
+
+**Solution:**
+- Install kernel with built-in binder support, OR
+- Install `binder_linux-dkms`
+
+### PSI Warning: [gbinder] WARNING: Service manager /dev/binder has died
+
+**Cause:** PSI (Pressure Stall Information) not enabled
+
+**Fix for linux-xanmod:**
+
+```bash
+sudo nano /etc/default/grub
+
+# Add psi=1 to GRUB_CMDLINE_LINUX_DEFAULT
+# Example:
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash psi=1"
+
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+sudo reboot
+```
+
+**Fix for other kernels:**
+- Switch to kernel with PSI support
+- Or use linux-zen / linux-cachyos
+
+### Kernel Switch Issues
+
+**Error when switching kernels or changing binder configuration:**
+
+```bash
+# Complete reset
+waydroid session stop
+sudo systemctl stop waydroid-container
+sudo systemctl disable waydroid-container
+sudo pkill -f waydroid
+
+# Verify no processes remain
+ps aux | grep waydroid
+
+# Clean everything
+rm -rf ~/.cache/waydroid
+rm -rf ~/.local/share/waydroid
+sudo rm -rf /run/waydroid
+sudo rm -rf /usr/share/waydroid-extra
+
+# Reinstall
+sudo pacman -S waydroid
+
+# Fresh start
+sudo waydroid init -f
+# or with GApps
+sudo waydroid init -s GAPPS -f
+
+# Re-enable services
+sudo systemctl enable --now waydroid-container.service
+waydroid session start
+```
+
+### Rotated Apps / Full-Screen Games Not Filling Display
+
+**Issue:** App displays rotated or doesn't fill screen
+
+**Solution:** Use windowed mode
+
+```bash
+# Press F11 while app is running
+# F11 toggles between fullscreen and windowed mode
+```
+
+### Roblox and Games Rendering Issues
+
+**Issue:** Roblox or other games display in rotated/incorrect orientation
+
+**Fix:**
+
+```bash
+# Edit Waydroid GPU configuration
 sudo nano /var/lib/waydroid/waydroid_base.prop
 
 # Change GPU rendering backend
 # FROM:
-# ro.hardware.gralloc=gbm
+ro.hardware.gralloc=gbm
+
 # TO:
 ro.hardware.gralloc=minigbm_gbm_mesa
-```
 
-Then restart Waydroid:
-```bash
+# Save and restart Waydroid
 waydroid session stop
 waydroid session start
 ```
 
-For fullscreen windowed apps, press `F11` to switch to windowed mode.
+**Source:** [Roblox on Waydroid Guide](https://gitlab.com/TestingPlant/roblox-on-waydroid-guide/) (comprehensive guide for many games)
 
----
+### GPU Acceleration Issues (Nvidia, VMs)
 
-## 📱 Installing Google Play Store & ARM Support
+**For Nvidia GPUs (non-Tegra):**
 
-You need two things for full app compatibility:
-1. **GApps:** Google Play Store and Google services
-2. **ARM Translation:** Library to run ARM-only apps on x86/x86_64
+Use software rendering:
+```bash
+sudo nano /var/lib/waydroid/waydroid_base.prop
 
-### Method 1: Using waydroid-helper (GUI) - Recommended
+# Add or modify:
+WAYDROID_USE_SWVENC=1
+```
 
-Install and run the graphical tool:
+**For Virtual Machines:**
+
+Software rendering is recommended. Use setting above.
+
+### Download Speeds Very Slow During Init
+
+**Issue:** `waydroid init` takes very long time
+
+**Cause:** Geographic/ISP throttling of Waydroid repo
+
+**Solution:** Use VPN
 
 ```bash
-# Install from official repos or chaotic-aur
-sudo pacman -S waydroid-helper
+# Install VPN
+sudo pacman -S riseup-vpn
 
-# Or download AppImage from GitHub releases
-# https://github.com/waydroid-helper/waydroid-helper
-```
-
-Then launch from your application menu and install:
-- Your preferred GApps version (OpenGapps, MindTheGapps, LiteGapps)
-- ARM translation library (libndk or libhoudini)
-
-### Method 2: Using waydroid-script (CLI)
-
-Install the interactive script tool:
-
-```bash
-# Install from official repos or chaotic-aur
-sudo pacman -S waydroid-script-git
-
-# Run the interactive menu
-sudo waydroid-extras
-```
-
-Choose options to install:
-- **GApps packages:**
-  - OpenGapps: Standard Google Apps implementation
-  - MindTheGapps: Minimal, optimized for custom ROMs (better for Android 13)
-  - LiteGapps: Minimal, lightweight version
-  
-- **ARM Translation Libraries:**
-  - **libndk** (Google Chromiumos): Better performance on AMD GPUs
-  - **libhoudini** (Intel): Better performance on Intel CPUs
-
-> **Tip:** Test both libraries if you have performance issues. Only one can be active at a time (last installed overwrites previous).
-
-### Method 3: Direct Installation from Repos
-
-Install pre-built GApps image:
-
-```bash
-# Option 1: From chaotic-aur
-sudo pacman -S waydroid-image-gapps
-
-# Option 2: Reinitialize Waydroid with GApps
-sudo waydroid init -s GAPPS -f
-
-# Restart container to see changes
-sudo systemctl restart waydroid-container
-```
-
-### Register Device with Google
-
-To use Google Play Store, you must register your device:
-
-#### Using waydroid-script:
-
-```bash
-# Start Waydroid session first
-waydroid session start
-
-# In another terminal
-sudo waydroid-extras
-
-# Select: "Get Google Device ID to Get Certified"
-# Copy the returned numeric ID
-# Open: https://google.com/android/uncertified/?pli=1
-# Enter your device ID and submit
-# Wait 10-20 minutes for registration
-# Clear Google Play Service cache and login
-```
-
-#### Manual device registration:
-
-Within Waydroid, use the Google Account Management settings to register.
-
-### Install Open-Source App Stores
-
-If you can't access Play Store or prefer open-source alternatives:
-
-- **[F-Droid](https://f-droid.org/):** Open-source app repository
-  - Download APK: https://f-droid.org/
-  - Install: `waydroid app install f-droid.apk`
-
-- **[Aurora Store](https://auroraoss.com/):** Unofficial Play Store client
-  - Download from GitHub releases
-  - Install: `waydroid app install aurora.apk`
-
-- **[microG Project](https://microg.org/):** Open-source Google services replacement
-
----
-
-## 📂 File Sharing Between Linux and Android
-
-### Quick Setup
-
-Create a shared folder accessible from both systems:
-
-```bash
-# Create Linux folder
-mkdir -p ~/SharedWithAndroid
-
-# Create mount point in Waydroid storage
-sudo mkdir -p ~/.local/share/waydroid/data/media/0/SharedFolder
-
-# Bind mount the folder
-sudo mount --bind ~/SharedWithAndroid ~/.local/share/waydroid/data/media/0/SharedFolder
-
-# Verify mount
-mount | grep SharedFolder
-```
-
-Files in `~/SharedWithAndroid` are now accessible at `/sdcard/SharedFolder` inside Waydroid.
-
-### Make File Sharing Permanent
-
-Add to `/etc/fstab` (replace `YOUR_USERNAME` with your actual username):
-
-```
-/home/YOUR_USERNAME/SharedWithAndroid /home/YOUR_USERNAME/.local/share/waydroid/data/media/0/SharedFolder none bind 0 0
-```
-
-Example for user `mak`:
-```
-/home/mak/SharedWithAndroid /home/mak/.local/share/waydroid/data/media/0/SharedFolder none bind 0 0
-```
-
-Then reload fstab:
-```bash
-sudo mount -a
+# Connect to European server before running:
+sudo waydroid init -s GAPPS
 ```
 
 ---
 
-## 🚀 Auto-Start Waydroid Without Password
+## 🏪 Open-Source App Stores
+
+### F-Droid (FOSS Repository)
+
+**Website:** https://f-droid.org/
+
+**Install:**
+1. Download F-Droid APK from https://f-droid.org/
+2. Install: `waydroid app install F-Droid.apk`
+3. Launch from Waydroid
+4. Browse and install FOSS apps
+
+### Aurora Store (Unofficial Play Store Client)
+
+**Website:** https://auroraoss.com/
+
+**Install:**
+1. Download from GitHub releases
+2. Install: `waydroid app install AuroraStore.apk`
+3. Use without Google account (optional)
+
+### microG Project (Open-source Google Services)
+
+**Website:** https://microg.org/
+
+Alternative to Google Play Services with privacy focus.
+
+**Use when:**
+- Can't access Google Play Store
+- Want open-source alternative
+- Privacy concerns
+
+---
+
+## 🚀 Auto-Start Launcher (No Password)
 
 ### Create Startup Script
 
@@ -572,36 +867,17 @@ Create `/usr/local/bin/start-waydroid.sh`:
 
 ```bash
 #!/bin/bash
-# Start Waydroid container and session
+# Start Waydroid container & session
 sudo systemctl start waydroid-container.service
 waydroid session start
 ```
 
-Make it executable:
+Make executable:
 ```bash
 sudo chmod +x /usr/local/bin/start-waydroid.sh
 ```
 
-### Allow systemctl Without Password
-
-Edit sudoers file:
-
-```bash
-EDITOR=nano sudo visudo
-```
-
-Add this line (**replace `YOUR_USERNAME`** with your actual username):
-
-```
-YOUR_USERNAME ALL=(ALL) NOPASSWD: /usr/bin/systemctl start waydroid-container.service
-```
-
-Example for user `mak`:
-```
-mak ALL=(ALL) NOPASSWD: /usr/bin/systemctl start waydroid-container.service
-```
-
-### Create Desktop Launcher
+### Create Desktop Entry
 
 Create `~/.local/share/applications/waydroid-start.desktop`:
 
@@ -617,185 +893,157 @@ StartupNotify=true
 Categories=Utility;
 ```
 
-Make it executable:
+Make executable:
 ```bash
 chmod +x ~/.local/share/applications/waydroid-start.desktop
 update-desktop-database ~/.local/share/applications/
 ```
 
-Now you can start Waydroid from your application menu!
+### Configure Passwordless sudo
 
-### Auto-Start with Shizuku (Optional)
-
-For easier root-level app permissions without full root:
+Edit sudoers file:
 
 ```bash
-# Install Shizuku from Play Store or F-Droid
-# Then establish ADB connection
-sudo waydroid shell sh /storage/emulated/0/Android/data/moe.shizuku.privileged.api/start.sh
+EDITOR=nano sudo visudo
 ```
 
-Create an alias to automate this:
+Add this line (replace `YOUR_USERNAME`):
 
-```bash
-# Add to ~/.bashrc or ~/.zshrc
-alias waydroid-start='waydroid show-full-ui & sleep 10 && pkexec waydroid shell sh /storage/emulated/0/Android/data/moe.shizuku.privileged.api/start.sh'
+```
+YOUR_USERNAME ALL=(ALL) NOPASSWD: /usr/bin/systemctl start waydroid-container.service
 ```
 
-Adjust the sleep duration (10 seconds) based on your system's startup time.
+Example for user `mak`:
+```
+mak ALL=(ALL) NOPASSWD: /usr/bin/systemctl start waydroid-container.service
+```
+
+**Now launch from application menu!**
 
 ---
 
-## 🔧 Advanced Configuration
+## 📊 Useful Commands
 
-### Root Access Options
-
-#### Option 1: Magisk (Xanmod Kernel Only)
-
-```bash
-# Install via waydroid-extras
-sudo waydroid-extras
-
-# Select: Magisk Delta
-# Follow on-screen instructions
-```
-
-For detailed Magisk setup:
-- https://github.com/casualsnek/waydroid_script#install-magisk
-- https://github.com/nitanmarcel/waydroid-magisk
-
-#### Option 2: Shizuku (All Kernels) - Recommended
-
-Shizuku provides ADB-level permissions without full root:
-
-1. Install from [Play Store](https://play.google.com/store/apps/details?id=moe.shizuku.privileged.api) or [F-Droid](https://f-droid.org/en/packages/moe.shizuku.privileged.api/)
-2. Establish ADB connection from Linux:
-   ```bash
-   sudo waydroid shell sh /storage/emulated/0/Android/data/moe.shizuku.privileged.api/start.sh
-   ```
-3. Apps can now request ADB permissions instead of full root
-
-> Works with **all kernels** and covers ~99% of root-required use cases.
-
-### Input Mapping for Games
-
-Use these tools to map keyboard and mouse to game controls:
-
-#### Option 1: XtMapper
-
-Download APK from [GitHub releases](https://github.com/Xtr126/XtMapper/releases)
-
-```bash
-waydroid app install XtMapper.apk
-```
-
-#### Option 2: Key Mapper
-
-Available in [F-Droid](https://f-droid.org/) and Play Store
-
-```bash
-# Via F-Droid
-waydroid app install keymapper.apk
-```
-
-> **Tip:** Tested with games like Need for Speed: No Limits with zero input lag!
-
-### Additional Tools
-
-Install via `waydroid-extras` or `waydroid-helper`:
-
-- **Smart Dock:** Modern, customizable desktop mode launcher
-- **Widevine DRM:** For streaming video apps
-- **LiteGapps:** Minimal Google Apps package
-- **Magisk Delta:** Android customization suite
-- **microG:** Open-source Google services replacement
-
-### GPU Selection (Dual GPU Systems)
-
-Use Waydroid-Settings to select which GPU to use:
-
-```bash
-sudo pacman -S waydroid-settings
-
-# Launch from application menu
-```
-
-> Works with systems having both integrated and dedicated GPUs.
-
----
-
-## 🛠️ Useful Commands
-
+### Status & Information
 ```bash
 # Check Waydroid status
 waydroid status
 
-# List installed Android apps
+# Check Android version
+waydroid shell getprop ro.build.version.release
+
+# Check CPU architecture
+waydroid shell getprop ro.product.cpu.abi
+```
+
+### App Management
+```bash
+# List installed apps
 waydroid app list
 
-# Install an APK
+# Install APK
 waydroid app install /path/to/app.apk
 
 # Launch specific app
 waydroid app launch com.package.name
 
-# Open Waydroid shell
-sudo waydroid shell
+# Uninstall app
+waydroid app remove com.package.name
+```
 
-# Stop Waydroid session
-waydroid session stop
+### Container & Session
+```bash
+# Start container
+sudo waydroid container start
 
 # Stop container
-sudo systemctl stop waydroid-container
+sudo waydroid container stop
 
 # Restart everything
 sudo systemctl restart waydroid-container
 waydroid session start
 
-# View Waydroid logs
+# Start session
+waydroid session start
+
+# Stop session
+waydroid session stop
+```
+
+### Shell & Debugging
+```bash
+# Open Waydroid shell
+sudo waydroid shell
+
+# View logs
 journalctl -u waydroid-container -f
 
-# Check Android version
-waydroid shell getprop ro.build.version.release
+# Check system properties
+waydroid shell getprop
+
+# Test network
+waydroid shell ping 8.8.8.8
+
+# Check disk usage
+waydroid shell df -h
 ```
 
 ---
 
-## 📚 Resources & Further Reading
+## 📚 Complete Resources
 
-- **[Official Waydroid Documentation](https://docs.waydro.id/)**
-- **[ArchWiki - Waydroid](https://wiki.archlinux.org/title/Waydroid)**
-- **[Waydroid GitHub Repository](https://github.com/waydroid/waydroid)**
-- **[Waydroid Script](https://github.com/casualsnek/waydroid_script)** - GApps and ARM translation
-- **[Waydroid Helper](https://github.com/waydroid-helper/waydroid-helper)** - GUI configuration tool
-- **[Roblox on Waydroid Guide](https://gitlab.com/TestingPlant/roblox-on-waydroid-guide/)**
-- **[CachyOS Wiki](https://wiki.cachyos.org/)**
+### Official Documentation
+- **[Waydroid Official](https://waydro.id/)** - Main website
+- **[Waydroid Docs](https://docs.waydro.id/)** - Complete documentation
+- **[ArchWiki - Waydroid](https://wiki.archlinux.org/title/Waydroid)** - Arch-specific info
+- **[GitHub Repository](https://github.com/waydroid/waydroid)** - Source code & issues
+
+### Tools & Utilities
+- **[Waydroid Helper](https://github.com/waydroid-helper/waydroid-helper)** - GUI configuration
+- **[Waydroid Script](https://github.com/casualsnek/waydroid_script)** - GApps & ARM installation
+- **[Waydroid Settings](https://github.com/axel358/waydroid-settings)** - GPU & settings control
+- **[Roblox Guide](https://gitlab.com/TestingPlant/roblox-on-waydroid-guide/)** - Game-specific setup
+
+### Related Projects
+- **[Shizuku](https://github.com/RikkaApps/Shizuku)** - ADB permissions without root
+- **[Magisk](https://github.com/topjohnwu/Magisk)** - Full root access (xanmod only)
+- **[microG Project](https://microg.org/)** - Open-source Google services
+- **[F-Droid](https://f-droid.org/)** - FOSS app repository
+- **[Aurora Store](https://auroraoss.com/)** - Unofficial Play Store
 
 ---
 
 ## 💡 Key Takeaways
 
-- Waydroid requires **Wayland** - it won't work on X11
-- Your kernel must have **binder module support**
-- **GApps + ARM translation** are essential for most apps
-- **File sharing** is easy with bind mounts
-- **Shizuku** provides root-like permissions without actual root access
-- Regular updates via `sudo waydroid upgrade` are important
-- Most troubleshooting issues are solved by reinitializing with `-f` flag
+1. **Wayland is mandatory** - X11 will not work
+2. **Binder modules are critical** - Install kernel with binder or use binder_linux-dkms
+3. **GApps + ARM translation essential** - Need both for full app compatibility
+4. **Choose ARM translation wisely:**
+   - AMD GPU → libndk (better performance)
+   - Intel CPU → libhoudini (better performance)
+   - Android 13+ → MindTheGapps (better compatibility)
+5. **Shizuku is recommended** - Works on all kernels, covers 99% of use cases
+6. **PSI matters** - Enable psi=1 if using xanmod kernel or encounter binder errors
+7. **Full reset solves most issues** - `sudo waydroid init -f` is your friend
+8. **F11 for fullscreen issues** - Toggle windowed mode in problematic apps
 
 ---
 
-## 🤝 Contributing
+## 🤝 Contributing & Feedback
 
-Found an issue or have improvements? Please:
-- Check [existing issues](https://github.com/waydroid/waydroid/issues)
-- Review [Waydroid troubleshooting docs](https://docs.waydro.id/troubleshooting)
-- Test your solution before reporting
+Found an issue? Have a solution?
 
-Share your experience, apps that work, and games you got running!
+- Check [Waydroid issues](https://github.com/waydroid/waydroid/issues)
+- Review [ArchWiki troubleshooting](https://wiki.archlinux.org/title/Waydroid#Troubleshooting)
+- Test solutions thoroughly before reporting
+
+**Share your experience:**
+- What games work well?
+- Which app translations performed best?
+- Any unique hardware configurations?
 
 ---
 
 **Last Updated:** January 2026
 
-> **⚠️ Disclaimer:** This is a community guide based on extensive personal experience, not official Waydroid documentation. Always review commands before running them. Your setup may vary depending on hardware, kernel, and distribution.
+> **⚠️ Disclaimer:** This is a comprehensive community guide based on extensive research and testing. While efforts are made to be accurate, always review commands before running them. Your setup may vary based on hardware, kernel, and distribution version.
