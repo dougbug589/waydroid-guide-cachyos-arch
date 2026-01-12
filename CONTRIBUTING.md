@@ -49,4 +49,4 @@ When contributing to the guide:
 
 Feel free to open an issue for questions or clarifications.
 
-Thank you for helping make this guide better! 🙏
+Thank you for helping make this guide better! 
