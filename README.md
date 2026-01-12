@@ -73,96 +73,384 @@ Waydroid uses **Android's Mesa integration** for GPU passthrough.
 
 Your kernel must include **binder module support**. This is essential for Android container functionality.
 
+#### Complete Kernel Analysis & Selection
+
+| Kernel | Source | Binder | Performance | PSI | Notes |
+|--------|--------|--------|-------------|-----|-------|
+| **linux-zen** | Arch default | ✅ Built-in | Good | ✅ Yes | Optimized for desktop, good balance |
+| **linux-cachyos** | CachyOS | ✅ Built-in | Excellent | ✅ Yes | Highly optimized for Cachyos, best default |
+| **linux-cachyos-lts** | CachyOS | ✅ Built-in | Excellent | ✅ Yes | LTS stability with CachyOS optimization |
+| **linux-xanmod** | chaotic-aur | ✅ Built-in | Best | ⚠️ Manual | Highest performance, requires PSI setup |
+| **linux** (stock) | Arch default | ❌ No | Baseline | ✅ Yes | Needs binder_linux-dkms |
+| **linux-hardened** | Arch repos | ❌ No | Good | ✅ Yes | Security-focused, needs binder_linux-dkms |
+| **linux-lts** (stock) | Arch default | ❌ No | Baseline | ✅ Yes | LTS version, needs binder_linux-dkms |
+
 #### Option A: Install Kernel with Built-in Binder (Recommended)
 
 Choose **one** of these kernels (all include binder modules):
 
-**1) linux-zen** (Arch Linux default)
+**1) linux-zen** (Arch Linux default - Best for most users)
 ```bash
+# Check if already installed
+uname -r | grep zen
+
+# Install
 sudo pacman -S linux-zen linux-zen-headers
+
+# Set as boot default (grub will auto-detect next boot)
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+sudo reboot
 ```
 
-**2) linux-cachyos** or **linux-cachyos-lts** (CachyOS optimized)
+**Features:**
+- ✅ Built-in binder support
+- ✅ Desktop-optimized
+- ✅ Stable and reliable
+- ✅ Good performance
+- ✅ No additional configuration needed
+
+**2) linux-cachyos** or **linux-cachyos-lts** (CachyOS-optimized - Best performance)
+
 ```bash
-# Install from chaotic-aur
+# Check current kernel
+uname -r
+
+# List available cachyos kernels
+sudo pacman -Ss linux-cachyos
+
+# Install latest version
 sudo pacman -S linux-cachyos linux-cachyos-headers
-# or LTS version
+
+# Or install LTS version (longer support)
 sudo pacman -S linux-cachyos-lts linux-cachyos-lts-headers
+
+# Rebuild GRUB
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+sudo reboot
 ```
 
-**3) linux-xanmod** (High performance, best for games)
+**Features:**
+- ✅ Built-in binder support
+- ✅ Highly optimized for performance
+- ✅ CachyOS-specific tweaks
+- ✅ Great for gaming
+- ✅ No additional configuration
+- ✅ LTS version available for stability
+
+**3) linux-xanmod** (High performance, best for games - Requires extra config)
+
 ```bash
 # Install from chaotic-aur
 sudo pacman -S linux-xanmod linux-xanmod-headers
+
+# Rebuild GRUB
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+
+# IMPORTANT: Configure PSI (see PSI Configuration section below)
+sudo reboot
 ```
+
+**Features:**
+- ✅ Built-in binder support
+- ✅ Highest performance
+- ✅ Best for gaming/demanding workloads
+- ⚠️ **REQUIRES PSI configuration** (critical!)
+- ⚠️ More complex setup than others
 
 **GUI Installation (Garuda users):**
 ```
 Garuda Settings Manager → Hardware → Kernel
 ```
 
-**For CachyOS kernel selection:**
-```bash
-# View available kernels
-sudo pacman -Ss cachyos-kernel
-
-# Install your choice
-sudo pacman -S linux-cachyos linux-cachyos-headers
-```
-
 #### Important: PSI Configuration for linux-xanmod
 
-If using **linux-xanmod**, enable PSI (Pressure Stall Information):
+If using **linux-xanmod**, you **MUST** enable PSI (Pressure Stall Information) or Waydroid will fail:
 
 ```bash
+# Check current kernel
+uname -r
+
+# If it shows xanmod, proceed with PSI setup
+# If not, you don't need this step
+
 # Edit GRUB configuration
 sudo nano /etc/default/grub
 
-# Find the line starting with GRUB_CMDLINE_LINUX_DEFAULT
-# Add psi=1 to the end (before any # symbols)
-
-# Example - change this:
+# FIND THIS LINE:
 # GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"
-# To this:
+
+# CHANGE IT TO THIS (add psi=1):
 GRUB_CMDLINE_LINUX_DEFAULT="quiet splash psi=1"
 
-# Rebuild GRUB
+# IMPORTANT: Make sure psi=1 is:
+# - Inside the quotes
+# - Before any # symbols
+# - After "quiet splash"
+
+# Example correct:
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash psi=1"
+
+# Example WRONG (will not work):
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash" # psi=1
+
+# Save and rebuild GRUB
 sudo grub-mkconfig -o /boot/grub/grub.cfg
 
-# Reboot
+# Verify PSI is enabled
+cat /proc/cmdline | grep psi
+
+# Reboot for changes to take effect
 sudo reboot
+
+# Verify after reboot
+cat /proc/cmdline | grep psi  # Should show psi=1
 ```
+
+**Why PSI matters:**
+- Waydroid binder heavily uses PSI for communication
+- Without PSI, you'll get: `[gbinder] WARNING: Service manager /dev/binder has died`
+- PSI allows better pressure-based scheduling
 
 #### Option B: Use Stock Kernel + binder_linux-dkms
 
-If using Arch's stock kernel or another kernel without binder:
+If using Arch's stock kernel or another kernel without built-in binder:
 
 ```bash
+# Check your current kernel
+uname -r
+
+# If it shows "arch", "hardened", or "lts", you need binder_linux-dkms
+
+# Install DKMS version
 sudo pacman -S binder_linux-dkms
+
+# DKMS will automatically build for your kernel
+# This may take a few minutes
+
+# Verify installation
+modprobe binder_linux
 ```
 
-This installs binder modules via DKMS (automatically built for your kernel).
+**DKMS Details:**
+- Automatically builds binder modules for your kernel
+- Rebuilds on kernel updates
+- Works with any kernel
+- Slightly slower than built-in (recompilation needed)
 
-#### Verify Binder Module Support
+#### Verify Binder Module Support Before Installation
 
-**Test if binder is available:**
+**ALWAYS check before installing Waydroid:**
+
 ```bash
-# Try loading binder module
+# Test 1: Try loading binder module
 sudo modprobe -a binder
 
-# Or with alternate name
+# Test 2: Alternate name
 sudo modprobe -a binder_linux
 
-# If no error output, you're good!
-# If error "module not found", install binder_linux-dkms
+# If either command returns WITH NO OUTPUT, you're good!
+# If it says "module not found", you need to:
+# - Install kernel with binder support, OR
+# - Install binder_linux-dkms
+
+# Test 3: Check detailed kernel config
+zgrep -i "android\|binder" /proc/config.gz
+
+# Look for these in output:
+# CONFIG_ANDROID=y         (kernel supports Android)
+# CONFIG_ANDROID_BINDER_IPC=y  (kernel has binder)
+# CONFIG_ANDROID_BINDER_IPC_ASYNC_MMAP_TLOOKUP=y
+
+# Test 4: Check loaded modules
+lsmod | grep binder
+
+# If empty, modules aren't loaded yet (load them manually with modprobe)
 ```
 
-**Check kernel Android config:**
+**Verification Success:**
+- `modprobe` returns with no error ✅
+- `zgrep` shows `CONFIG_ANDROID=y` ✅
+- Ready to install Waydroid ✅
+
+#### Kernel-Specific Issues & Solutions
+
+**Issue: "module binder not found" even after install**
+
 ```bash
-zgrep ANDROID /proc/config.gz
+# Cause: Module not built or kernel lacking support
+# Solution 1: Check if binder is built-in (not modular)
+grep BINDER /proc/config.gz | grep -i "^CONFIG_ANDROID_BINDER"
+
+# If shows =m (modular), load it:
+sudo modprobe binder_linux
+
+# If shows =y (built-in), it should work. Reboot:
+sudo reboot
+
+# Solution 2: Install binder_linux-dkms
+sudo pacman -S binder_linux-dkms
+
+# Solution 3: Switch to kernel with built-in support
+sudo pacman -S linux-zen linux-zen-headers
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+sudo reboot
 ```
 
-Look for: `CONFIG_ANDROID=y`
+**Issue: binder modules load but Waydroid still fails**
+
+```bash
+# Cause: Module loaded but binderfs not mounted
+# Check if binderfs exists
+ls /dev/binderfs
+
+# If directory doesn't exist:
+sudo mkdir -p /dev/binderfs
+
+# Mount it
+sudo mount -t binder binder /dev/binderfs
+
+# Verify
+mount | grep binder
+
+# Make permanent (create systemd service as shown in Setup section)
+```
+
+**Issue: Switching kernels causes "permission denied" or binder errors**
+
+```bash
+# Cause: Old kernel modules incompatible with new kernel
+
+# Complete recovery:
+waydroid session stop
+sudo systemctl stop waydroid-container
+sudo systemctl disable waydroid-container
+sudo pkill -f waydroid
+
+# Clean cache and configs
+rm -rf ~/.cache/waydroid
+rm -rf ~/.local/share/waydroid
+sudo rm -rf /run/waydroid
+
+# Reinstall Waydroid
+sudo pacman -S waydroid
+
+# Reinitialize
+sudo waydroid init -f
+# or with GApps
+sudo waydroid init -s GAPPS -f
+
+# Re-enable and start
+sudo systemctl enable --now waydroid-container
+waydroid session start
+```
+
+**Issue: PSI warning appears but using xanmod**
+
+```bash
+# Error: [gbinder] WARNING: Service manager /dev/binder has died
+
+# Verify PSI is configured
+cat /proc/cmdline | grep psi
+
+# If psi=1 NOT present:
+# PSI configuration didn't take effect. Re-run:
+sudo nano /etc/default/grub
+# Add psi=1 to GRUB_CMDLINE_LINUX_DEFAULT
+
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+sudo reboot
+
+# Verify after reboot
+cat /proc/cmdline | grep psi  # Must show psi=1
+```
+
+**Issue: Kernel panic or won't boot after changing kernel**
+
+```bash
+# Use GRUB boot menu to select previous kernel:
+# 1. Reboot
+# 2. Hold Shift during boot (or press Esc)
+# 3. Select "Advanced options for Arch"
+# 4. Select previous working kernel
+# 5. Boot
+
+# Once booted:
+# Uninstall problematic kernel
+sudo pacman -Rns linux-xanmod  # replace with your kernel
+
+# Go back to working kernel
+sudo pacman -S linux-zen linux-zen-headers
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+
+# Verify GRUB config has kernel entries
+grep "^menuentry" /boot/grub/grub.cfg
+```
+
+#### Kernel Installation Verification Checklist
+
+Before initializing Waydroid, verify:
+
+```bash
+# 1. Check you're on a supported kernel
+echo "Current kernel: $(uname -r)"
+
+# 2. Verify binder support
+sudo modprobe binder_linux 2>/dev/null && echo "✅ Binder module available" || echo "❌ Binder module NOT available"
+
+# 3. Check Android kernel config
+zgrep CONFIG_ANDROID /proc/config.gz | head -5
+
+# 4. If using xanmod, verify PSI
+if uname -r | grep -q xanmod; then
+    cat /proc/cmdline | grep psi && echo "✅ PSI enabled" || echo "❌ PSI NOT enabled - CRITICAL!"
+fi
+
+# 5. Verify binderfs mount point
+ls /dev/binderfs && echo "✅ binderfs exists" || echo "⚠️ binderfs not mounted yet (will be created)"
+
+# If all checks pass or show warnings, proceed with Waydroid setup
+```
+
+#### Hardware-Specific Kernel Recommendations
+
+**AMD CPU with AMD GPU:**
+```bash
+# Best: linux-cachyos (optimized for AMD)
+sudo pacman -S linux-cachyos linux-cachyos-headers
+```
+
+**Intel CPU with Intel iGPU:**
+```bash
+# Best: linux-zen (good balance, no extra config)
+sudo pacman -S linux-zen linux-zen-headers
+```
+
+**Gaming-focused (any CPU):**
+```bash
+# Best: linux-xanmod (highest performance, requires PSI setup)
+sudo pacman -S linux-xanmod linux-xanmod-headers
+# Don't forget to configure PSI!
+```
+
+**CachyOS system:**
+```bash
+# Best: linux-cachyos (native support)
+sudo pacman -S linux-cachyos linux-cachyos-headers
+```
+
+**Stability/LTS priority:**
+```bash
+# Best: linux-cachyos-lts or linux-zen
+sudo pacman -S linux-cachyos-lts linux-cachyos-lts-headers
+```
+
+**Nvidia GPU (software rendering):**
+```bash
+# Any kernel works, no special config
+# Use: linux-zen (simplest)
+sudo pacman -S linux-zen linux-zen-headers
+# Or: linux-cachyos (better performance)
+```
 
 ---
 
@@ -681,6 +969,305 @@ waydroid shell cat /etc/resolv.conf
 ---
 
 ## 🛠️ Troubleshooting & Common Issues
+
+### Kernel & Binder Issues (Deep Dive)
+
+#### Understanding Kernel & Binder Architecture
+
+**How Waydroid uses binder:**
+1. Android container needs binder IPC (inter-process communication)
+2. Kernel provides binder module
+3. Module creates `/dev/binder` device
+4. Waydroid mounts binderfs at `/dev/binderfs`
+5. Android processes communicate through binder
+
+**If any step fails, Waydroid won't work.**
+
+#### Complete Binder Module Troubleshooting
+
+**Step 1: Check if kernel has binder support**
+
+```bash
+# Method 1: Try loading module
+sudo modprobe binder_linux 2>&1
+
+# Expected output (if available):
+# (nothing - module loads silently)
+
+# Expected error (if not available):
+# modprobe: FATAL: Module binder_linux not found in directory /lib/modules/6.x.x-xxx/kernel
+
+# Method 2: Check kernel config in detail
+zgrep -i "ANDROID\|BINDER" /proc/config.gz
+
+# You should see:
+# CONFIG_ANDROID=y
+# CONFIG_ANDROID_BINDER_IPC=y
+# CONFIG_ANDROID_BINDER_IPC_ASYNC_MMAP_TLOOKUP=y
+```
+
+**Step 2: Load modules and mount binderfs**
+
+```bash
+# Load modules
+sudo modprobe -a binder_linux ashmem_linux
+
+# Verify modules loaded
+lsmod | grep -E "binder|ashmem"
+
+# Example output:
+# ashmem_linux           16384  0
+# binder_linux           110592  0
+
+# Mount binderfs
+sudo mkdir -p /dev/binderfs
+sudo mount -t binder binder /dev/binderfs
+
+# Verify mount
+mount | grep binder
+# Expected: binder on /dev/binderfs type binder (rw,relatime)
+
+# Check device created
+ls -la /dev/binderfs
+```
+
+**Step 3: Make binderfs mount permanent**
+
+If binder works but isn't persisting across reboots:
+
+```bash
+# Create systemd service
+sudo nano /etc/systemd/system/binderfs.service
+```
+
+Add this content:
+```ini
+[Unit]
+Description=Mount binderfs for Waydroid
+DefaultDependencies=no
+Before=waydroid-container.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/mount -t binder binder /dev/binderfs
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable it:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable binderfs.service
+sudo systemctl start binderfs.service
+
+# Verify
+mount | grep binder
+```
+
+#### Binder Error: "Module not found" Even After Install
+
+**Scenario 1: Kernel has binder built-in but as modular**
+
+```bash
+# Check if binder is modular
+grep BINDER /proc/config.gz | grep "=m"
+
+# If yes, load the module:
+sudo modprobe binder_linux
+
+# Verify loaded:
+lsmod | grep binder
+```
+
+**Scenario 2: binder_linux-dkms installed but not rebuilt**
+
+```bash
+# Force rebuild for current kernel
+sudo dkms build binder_linux
+
+# Install
+sudo dkms install binder_linux
+
+# Verify
+modprobe binder_linux
+```
+
+**Scenario 3: Wrong kernel version**
+
+```bash
+# Check running kernel
+uname -r
+# Example: 6.12.1-arch1-1
+
+# Check what binder_linux was built for
+modinfo binder_linux 2>/dev/null || echo "Module not found"
+
+# Solution: Install kernel with built-in binder
+sudo pacman -S linux-zen linux-zen-headers
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+sudo reboot
+```
+
+#### PSI Configuration Issues (xanmod kernel)
+
+**Error: [gbinder] WARNING: Service manager /dev/binder has died**
+
+Cause: PSI not enabled on xanmod kernel
+
+**Fix:**
+
+```bash
+# Verify PSI configured in boot params
+cat /proc/cmdline | grep psi
+
+# Should show: psi=1
+
+# If NOT present:
+sudo nano /etc/default/grub
+
+# Current (wrong):
+# GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"
+
+# Change to:
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash psi=1"
+
+# Rebuild GRUB
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+
+# Reboot and verify
+sudo reboot
+cat /proc/cmdline | grep psi  # Must show psi=1
+```
+
+**Why PSI matters on xanmod:**
+- Xanmod is heavily optimized for pressure-based scheduling
+- Binder relies on PSI for interprocess communication
+- Without PSI, communication fails → "binder has died" error
+
+#### Kernel Switch Recovery
+
+**Scenario: You switched kernels and Waydroid now crashes**
+
+```bash
+# Stop everything
+waydroid session stop
+sudo systemctl stop waydroid-container waydroid-container.socket
+sudo pkill -f waydroid
+
+# Verify stopped
+ps aux | grep waydroid | grep -v grep  # Should be empty
+
+# Check new kernel has binder support
+sudo modprobe binder_linux && echo "✅ Binder available" || echo "❌ Binder NOT available"
+
+# If binder not available:
+# - Install kernel with binder support
+# - OR install binder_linux-dkms
+
+# Clean old kernel modules/configs
+rm -rf ~/.cache/waydroid
+rm -rf ~/.local/share/waydroid
+sudo rm -rf /run/waydroid
+
+# Reinstall Waydroid clean
+sudo pacman -Sy waydroid
+
+# Reinitialize completely
+sudo waydroid init -f
+# or with GApps
+sudo waydroid init -s GAPPS -f
+
+# Test binder first
+sudo modprobe binder_linux
+
+# Re-enable services
+sudo systemctl daemon-reload
+sudo systemctl enable --now waydroid-container.service
+waydroid session start
+
+# Verify status
+waydroid status
+```
+
+#### Kernel Boot Issues After PSI Configuration
+
+**Problem: System won't boot after adding psi=1 to GRUB**
+
+```bash
+# At boot menu, select previous kernel or recovery mode
+# Or edit GRUB entry to remove psi=1
+
+# Once booted, fix GRUB:
+sudo nano /etc/default/grub
+
+# Remove psi=1 if it was incorrectly formatted
+# Correct format:
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash psi=1"
+
+# Incorrect format (will fail):
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash" psi=1  # psi=1 outside quotes!
+
+# Rebuild
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+sudo reboot
+```
+
+#### Hardware-Specific Kernel Issues
+
+**AMD CPUs with binder_linux-dkms:**
+```bash
+# Sometimes needs to rebuild modules
+sudo dkms autoinstall
+
+# Verify
+sudo modprobe binder_linux
+```
+
+**Intel CPUs with custom kernels:**
+```bash
+# Check if kernel config has Android support
+zgrep CONFIG_ANDROID /proc/config.gz
+
+# If empty, you need kernel with Android support
+```
+
+**Virtual Machines:**
+```bash
+# VMs typically don't have binder support built-in
+# Install binder_linux-dkms
+sudo pacman -S binder_linux-dkms
+
+# Rebuild for VM kernel
+sudo dkms install binder_linux
+
+# Test
+sudo modprobe binder_linux
+```
+
+#### Kernel Update Broke Binder
+
+**After `sudo pacman -Syu`, Waydroid fails**
+
+```bash
+# Check kernel version changed
+uname -r
+
+# If kernel updated, modules may need rebuild:
+sudo dkms autoinstall
+
+# Or manually rebuild binder
+sudo dkms build binder_linux
+sudo dkms install binder_linux
+
+# Test
+sudo modprobe binder_linux
+
+# Restart Waydroid
+sudo systemctl restart waydroid-container
+waydroid session start
+```
 
 ### Binder Module Issues
 
