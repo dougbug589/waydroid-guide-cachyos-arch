@@ -33,6 +33,28 @@ For official documentation, check out [docs.waydro.id](https://docs.waydro.id/)
 - Running a [Wayland](https://wayland.freedesktop.org/) session (not X11)
 - Good news: CachyOS kernel already has binder modules built-in
 
+## 🚀 Quick Install (Recommended)
+
+**One-click installer script:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dougbug589/waydroid-guide-cachyos-arch/main/install-waydroid.sh -o install-waydroid.sh
+chmod +x install-waydroid.sh
+./install-waydroid.sh
+```
+
+The script will:
+- Install Waydroid
+- Setup binder modules and binderfs
+- Configure services
+- Optionally install GApps and ARM support
+- Setup auto-start launcher
+- Configure file sharing
+
+**Or follow the manual setup below:**
+
+---
+
 ## 💻 My Setup
 
 - **Desktop Environment:** [KDE Plasma](https://kde.org/plasma-desktop/) (Wayland)
