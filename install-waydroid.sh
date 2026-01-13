@@ -6,6 +6,11 @@
 # Supports: Arch Linux, Garuda, CachyOS, EndeavourOS, and other Arch-based distros
 # Based on: https://github.com/dougbug589/waydroid-guide-cachyos-arch
 #
+# Credits:
+#   - GApps & ARM translation: @casualsnek (https://github.com/casualsnek/waydroid_script)
+#   - Waydroid Project: https://waydro.id/
+#   - Community contributions and testing
+#
 # Usage: ./install-waydroid.sh
 #
 
