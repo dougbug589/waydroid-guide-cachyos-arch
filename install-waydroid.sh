@@ -479,9 +479,19 @@ echo "  - First boot: waydroid first-launch (initial setup)"
 echo ""
 print_info "For more information, see: https://docs.waydro.id/"
 echo ""
+print_info "Note: If Waydroid becomes frozen, unfreeze with:"
+echo "  sudo waydroid container unfreeze"
+echo ""
 
 read -p "Start Waydroid session now? (y/N): " start_now
 if [[ "$start_now" =~ ^[Yy]$ ]]; then
+    # Check if container is frozen and unfreeze if needed
+    if waydroid status 2>/dev/null | grep -q "FROZEN"; then
+        print_warning "Container is frozen, unfreezing..."
+        sudo waydroid container unfreeze
+        sleep 2
+    fi
+    
     echo ""
     echo "Choose Waydroid session mode:"
     echo "  1. Full UI (complete Android interface)"
@@ -541,3 +551,12 @@ if [[ "$start_now" =~ ^[Yy]$ ]]; then
 fi
 
 print_success "Done! Enjoy Waydroid!"
+echo ""
+print_info "Quick help commands:"
+echo "  Unfreeze (if frozen):     sudo waydroid container unfreeze"
+echo "  Check status:             waydroid status"
+echo "  View logs:                journalctl -u waydroid-container -f"
+echo "  Open shell:               sudo waydroid shell"
+echo "  Stop container:           sudo waydroid container stop"
+echo "  Restart container:        sudo waydroid container restart"
+
