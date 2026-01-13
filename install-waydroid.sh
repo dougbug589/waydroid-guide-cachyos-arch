@@ -69,6 +69,55 @@ fi
 
 print_success "Prerequisites check passed"
 
+# Check kernel compatibility
+print_step "Checking kernel compatibility..."
+KERNEL_NAME=$(uname -r)
+print_info "Current kernel: $KERNEL_NAME"
+
+# List of supported kernels (case-insensitive check)
+SUPPORTED_KERNELS=("zen" "cachyos" "xanmod" "lts" "hardened" "clear")
+KERNEL_SUPPORTED=false
+
+# Check if kernel name contains any of the supported kernel names
+for supported in "${SUPPORTED_KERNELS[@]}"; do
+    if [[ "$KERNEL_NAME" =~ $supported ]]; then
+        KERNEL_SUPPORTED=true
+        print_success "Kernel '$KERNEL_NAME' is supported (matched: $supported)"
+        break
+    fi
+done
+
+# Additional check for binder support
+if [[ "$KERNEL_SUPPORTED" == false ]]; then
+    if zgrep -q "CONFIG_ANDROID=y" /proc/config.gz 2>/dev/null || modprobe -n binder_linux &>/dev/null; then
+        print_warning "Kernel name not recognized, but binder support detected"
+        KERNEL_SUPPORTED=true
+    fi
+fi
+
+# Exit if kernel is not supported
+if [[ "$KERNEL_SUPPORTED" == false ]]; then
+    print_error "Unsupported kernel: $KERNEL_NAME"
+    echo ""
+    echo "Waydroid requires a kernel with Android/binder support."
+    echo "Supported kernels:"
+    echo "  - linux-zen (recommended for most users)"
+    echo "  - linux-cachyos (CachyOS optimized)"
+    echo "  - linux-xanmod (high performance)"
+    echo "  - linux-lts (with binder_linux-dkms)"
+    echo "  - linux-hardened"
+    echo "  - linux-clear"
+    echo ""
+    echo "You can install a supported kernel with:"
+    echo "  sudo pacman -S linux-zen linux-zen-headers"
+    echo ""
+    echo "Or install binder module for your current kernel:"
+    echo "  sudo pacman -S binder_linux-dkms"
+    echo ""
+    print_error "Installation cannot proceed with unsupported kernel"
+    exit 1
+fi
+
 # Install Waydroid
 print_step "Installing Waydroid..."
 if pacman -Q waydroid &> /dev/null; then
@@ -76,29 +125,6 @@ if pacman -Q waydroid &> /dev/null; then
 else
     sudo pacman -S --noconfirm waydroid
     print_success "Waydroid installed"
-fi
-
-# Check kernel for binder support
-print_step "Checking kernel for binder module support..."
-KERNEL_NAME=$(uname -r)
-print_info "Current kernel: $KERNEL_NAME"
-
-if zgrep -q "CONFIG_ANDROID=y" /proc/config.gz 2>/dev/null; then
-    print_success "Kernel has Android/binder support built-in"
-elif modprobe -n binder_linux &>/dev/null; then
-    print_success "Binder module is available"
-else
-    print_warning "No built-in binder support detected"
-    echo "Consider installing one of these kernels:"
-    echo "  - linux-zen (Arch default)"
-    echo "  - linux-cachyos (CachyOS optimized)"
-    echo "  - linux-xanmod (high performance)"
-    echo "  - Or install: sudo pacman -S binder_linux-dkms"
-    read -p "Continue anyway? (y/N): " continue_kernel
-    if [[ ! "$continue_kernel" =~ ^[Yy]$ ]]; then
-        print_error "Installation cancelled. Please install proper kernel first."
-        exit 1
-    fi
 fi
 
 # Mount binderfs
