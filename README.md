@@ -15,7 +15,64 @@
 
 ---
 
-## 📦 What is Waydroid?
+## � Quick Navigation
+
+### 🚀 Installation Methods
+Choose your preferred installation method:
+
+**→ [Automated Script Installation](#-automated-installation-script) (Recommended)**  
+One-click setup with automatic configuration and feature selection
+
+**→ [Manual Step-by-Step Guide](#-comprehensive-prerequisites) (Advanced)**  
+Complete manual installation with detailed explanations
+
+### 🔧 Additional Resources
+- [Prerequisites & Requirements](#-comprehensive-prerequisites)
+- [Google Apps & ARM Translation](#install-gapps-and-arm-translation) (via [waydroid_script](https://github.com/casualsnek/waydroid_script))
+- [Troubleshooting Guide](#troubleshooting)
+- [Changelog](CHANGELOG.md) - Recent fixes and improvements
+
+---
+
+## 🚀 Automated Installation Script
+
+**Quick and easy setup** - Handles everything automatically with interactive prompts.
+
+### Features:
+- ✅ Automatic kernel detection and validation
+- ✅ Fresh install vs re-configuration detection
+- ✅ Image preservation (saves bandwidth)
+- ✅ Session mode selection (Full UI / Background / First launch)
+- ✅ Integrated [waydroid_script](https://github.com/casualsnek/waydroid_script) for GApps & ARM
+- ✅ Automatic service configuration
+- ✅ Firewall setup (optional)
+- ✅ File sharing setup (optional)
+
+### Quick Start:
+
+```bash
+# Clone the repository
+git clone https://github.com/dougbug589/waydroid-guide-cachyos-arch.git
+cd waydroid-guide-cachyos-arch
+
+# Run the installation script
+chmod +x install-waydroid.sh
+./install-waydroid.sh
+```
+
+The script will guide you through:
+1. Kernel compatibility check
+2. Waydroid installation
+3. Image download or preservation
+4. GApps & ARM translation (via [@casualsnek's waydroid_script](https://github.com/casualsnek/waydroid_script))
+5. Optional features (file sharing, auto-start launcher)
+6. Session mode selection
+
+**Credits:** GApps and ARM translation powered by [@casualsnek's waydroid_script](https://github.com/casualsnek/waydroid_script)
+
+---
+
+## �📦 What is Waydroid?
 
 **Waydroid** (formerly Anbox-Halium) is a rebuild of Anbox designed to provide **significantly faster performance** by utilizing more of the native host's hardware instead of pure emulation.
 
@@ -1587,7 +1644,7 @@ waydroid shell df -h
 
 ### Tools & Utilities
 - **[Waydroid Helper](https://github.com/waydroid-helper/waydroid-helper)** - GUI configuration
-- **[Waydroid Script](https://github.com/casualsnek/waydroid_script)** - GApps & ARM installation
+- **[Waydroid Script](https://github.com/casualsnek/waydroid_script)** by [@casualsnek](https://github.com/casualsnek) - GApps & ARM installation
 - **[Waydroid Settings](https://github.com/axel358/waydroid-settings)** - GPU & settings control
 - **[Roblox Guide](https://gitlab.com/TestingPlant/roblox-on-waydroid-guide/)** - Game-specific setup
 
@@ -1597,6 +1654,29 @@ waydroid shell df -h
 - **[microG Project](https://microg.org/)** - Open-source Google services
 - **[F-Droid](https://f-droid.org/)** - FOSS app repository
 - **[Aurora Store](https://auroraoss.com/)** - Unofficial Play Store
+
+---
+
+## 🙏 Credits & Attribution
+
+### Core Projects
+- **[Waydroid](https://github.com/waydroid/waydroid)** - The amazing Android container project
+- **[@casualsnek](https://github.com/casualsnek)** - Creator of [waydroid_script](https://github.com/casualsnek/waydroid_script) for GApps/ARM installation
+- **Original Guide** - [dougbug589](https://github.com/dougbug589) for the initial waydroid-guide-cachyos-arch
+
+### Contributors
+- Script automation and improvements by the community
+- Testing and troubleshooting by Arch/CachyOS users
+- Documentation contributions from various sources
+
+### Special Thanks
+This guide integrates and builds upon:
+- Official Waydroid documentation
+- Arch Linux Wiki community knowledge
+- @casualsnek's waydroid_script for automated GApps/ARM setup
+- Community troubleshooting and solutions
+
+**See [CHANGELOG.md](CHANGELOG.md) for recent improvements and fixes**
 
 ---
 

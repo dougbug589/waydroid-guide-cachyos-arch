@@ -458,28 +458,72 @@ echo "  - View logs: journalctl -u waydroid-container -f"
 echo "  - Check Android version: waydroid shell getprop ro.build.version.release"
 echo "  - Open shell: sudo waydroid shell"
 echo ""
+print_info "Session modes available:"
+echo "  - Full UI: waydroid show-full-ui (complete Android interface)"
+echo "  - Background: waydroid session start (apps in taskbar/launcher)"
+echo "  - First boot: waydroid first-launch (initial setup)"
+echo ""
 print_info "For more information, see: https://docs.waydro.id/"
 echo ""
 
 read -p "Start Waydroid session now? (y/N): " start_now
 if [[ "$start_now" =~ ^[Yy]$ ]]; then
+    echo ""
+    echo "Choose Waydroid session mode:"
+    echo "  1. Full UI (complete Android interface)"
+    echo "  2. Background mode (apps in taskbar)"
+    echo "  3. First launch setup"
+    echo ""
+    read -p "Choose (1/2/3): " session_mode
+    
     print_info "Starting Waydroid session..."
     print_warning "Waiting for container to start (this may take a minute)..."
-    waydroid session start &
-    SESSION_PID=$!
-
-    # Wait for session to be ready
-    for i in {1..30}; do
-        if waydroid status 2>/dev/null | grep -q "RUNNING"; then
-            print_success "Waydroid session is ready!"
-            break
-        fi
-        sleep 2
-    done
-
-    print_info "Launching Waydroid UI..."
-    waydroid show-full-ui &
-    wait $SESSION_PID 2>/dev/null || true
+    
+    case "$session_mode" in
+        1)
+            print_info "Starting in Full UI mode..."
+            waydroid session start &
+            SESSION_PID=$!
+            
+            # Wait for session to be ready
+            for i in {1..30}; do
+                if waydroid status 2>/dev/null | grep -q "RUNNING"; then
+                    print_success "Waydroid session is ready!"
+                    break
+                fi
+                sleep 2
+            done
+            
+            waydroid show-full-ui &
+            wait $SESSION_PID 2>/dev/null || true
+            ;;
+        2)
+            print_info "Starting in Background mode..."
+            waydroid session start
+            print_success "Waydroid running in background!"
+            print_info "Launch Android apps from your application menu"
+            ;;
+        3)
+            print_info "Starting first launch setup..."
+            waydroid first-launch
+            ;;
+        *)
+            print_warning "Invalid choice, starting in Full UI mode..."
+            waydroid session start &
+            SESSION_PID=$!
+            
+            for i in {1..30}; do
+                if waydroid status 2>/dev/null | grep -q "RUNNING"; then
+                    print_success "Waydroid session is ready!"
+                    break
+                fi
+                sleep 2
+            done
+            
+            waydroid show-full-ui &
+            wait $SESSION_PID 2>/dev/null || true
+            ;;
+    esac
 fi
 
 print_success "Done! Enjoy Waydroid!"
