@@ -69,6 +69,42 @@ fi
 
 print_success "Prerequisites check passed"
 
+# Detect if this is a fresh install or re-configuration
+print_step "Detecting system state..."
+IS_FRESH_INSTALL=true
+
+if pacman -Q waydroid &> /dev/null; then
+    print_info "Waydroid package detected"
+    IS_FRESH_INSTALL=false
+fi
+
+if [[ -d /var/lib/waydroid ]] && [[ -f /var/lib/waydroid/images/system.img ]]; then
+    print_info "Waydroid data and images detected"
+    IS_FRESH_INSTALL=false
+fi
+
+if systemctl is-enabled waydroid-container.service &>/dev/null; then
+    print_info "Waydroid services are enabled"
+    IS_FRESH_INSTALL=false
+fi
+
+if [[ "$IS_FRESH_INSTALL" == true ]]; then
+    print_success "Fresh installation detected - Full setup will run"
+else
+    print_warning "Existing Waydroid installation detected - Re-configuration mode"
+    echo ""
+    echo "Options:"
+    echo "  1. Continue to check/update configuration"
+    echo "  2. Exit (nothing will be changed)"
+    echo ""
+    read -p "Choose (1/2): " reconfig_choice
+    if [[ "$reconfig_choice" != "1" ]]; then
+        print_info "Exiting without changes"
+        exit 0
+    fi
+    print_info "Re-configuration mode: Will check and optionally update settings"
+fi
+
 # Check kernel compatibility
 print_step "Checking kernel compatibility..."
 KERNEL_NAME=$(uname -r)
@@ -257,6 +293,8 @@ elif command -v waydroid_extras &> /dev/null; then
     WAYDROID_EXTRAS_CMD="waydroid_extras"
 fi
 
+WAYDROID_SCRIPT_DIR="$SCRIPT_HOME/.local/share/waydroid_script"
+
 # Check if installed via package or manually
 if pacman -Q waydroid-script-git &> /dev/null; then
     print_success "waydroid-script-git is already installed (from package)"
@@ -271,26 +309,43 @@ elif [[ -n "$WAYDROID_EXTRAS_CMD" ]]; then
     if [[ "$run_extras" =~ ^[Yy]$ ]]; then
         sudo $WAYDROID_EXTRAS_CMD
     fi
+elif [[ -d "$WAYDROID_SCRIPT_DIR" ]]; then
+    print_success "waydroid_script found at: $WAYDROID_SCRIPT_DIR"
+    read -p "Update and run waydroid_extras? (y/N): " update_script
+    if [[ "$update_script" =~ ^[Yy]$ ]]; then
+        print_info "Updating waydroid_script from GitHub..."
+        cd "$WAYDROID_SCRIPT_DIR"
+        git pull
+        print_success "Updated"
+        sudo python3 main.py
+    fi
 else
-    # Not found in PATH or package - install from repos
-    print_info "waydroid-script not found in system"
-    read -p "Install waydroid-script-git from repos? (Y/n): " install_script
+    # Not found - install from GitHub
+    print_info "waydroid_script not found in system"
+    read -p "Install waydroid_script from GitHub? (Y/n): " install_script
     if [[ ! "$install_script" =~ ^[Nn]$ ]]; then
-        # Check if waydroid-helper is available (GUI alternative)
-        if pacman -Q waydroid-helper &> /dev/null; then
-            print_info "waydroid-helper (GUI) is also available: sudo pacman -S waydroid-helper"
-        fi
+        print_info "Installing waydroid_script from GitHub..."
         
-        print_info "Installing waydroid-script-git..."
-        if sudo pacman -S --noconfirm waydroid-script-git; then
-            print_success "waydroid-script-git installed"
-            read -p "Run waydroid-extras now? (y/N): " run_extras
-            if [[ "$run_extras" =~ ^[Yy]$ ]]; then
-                sudo waydroid-extras
+        # Install dependencies
+        print_info "Installing dependencies..."
+        sudo pacman -S --needed --noconfirm python python-requests python-tqdm lzip sqlite
+        
+        # Clone repository
+        mkdir -p "$(dirname "$WAYDROID_SCRIPT_DIR")"
+        if git clone https://github.com/casualsnek/waydroid_script.git "$WAYDROID_SCRIPT_DIR"; then
+            print_success "waydroid_script installed to: $WAYDROID_SCRIPT_DIR"
+            
+            # Create symlink for easy access
+            sudo ln -sf "$WAYDROID_SCRIPT_DIR/main.py" /usr/local/bin/waydroid_extras 2>/dev/null || true
+            
+            read -p "Run waydroid_script now to install GApps/ARM? (y/N): " run_script
+            if [[ "$run_script" =~ ^[Yy]$ ]]; then
+                cd "$WAYDROID_SCRIPT_DIR"
+                sudo python3 main.py
             fi
         else
-            print_error "Failed to install waydroid-script-git"
-            print_info "You can try manually: sudo pacman -S waydroid-script-git"
+            print_error "Failed to clone waydroid_script from GitHub"
+            print_info "You can manually clone: git clone https://github.com/casualsnek/waydroid_script.git"
         fi
     fi
 fi
