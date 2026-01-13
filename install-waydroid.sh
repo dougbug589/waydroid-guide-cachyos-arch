@@ -397,9 +397,18 @@ if [[ "$setup_share" =~ ^[Yy]$ ]]; then
         echo "$MOUNT_LINE" | sudo tee -a /etc/fstab > /dev/null
         sudo mount -a
         print_success "File sharing configured (persistent)"
-        print_info "Access shared files at: /sdcard/SharedFolder in Waydroid"
+        echo ""
+        print_info "Shared folder locations:"
+        echo "  📁 Host: $SHARE_PATH"
+        echo "  📱 Android: /sdcard/SharedFolder"
+        echo ""
+        print_info "Place files in $SHARE_PATH on your computer"
+        print_info "Access them in /sdcard/SharedFolder inside Waydroid"
     else
         print_info "Bind mount already in /etc/fstab"
+        echo ""
+        print_info "Shared folder: $SHARE_PATH (on host)"
+        print_info "Access in Waydroid: /sdcard/SharedFolder"
     fi
 fi
 
