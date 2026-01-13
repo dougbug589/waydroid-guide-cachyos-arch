@@ -249,17 +249,33 @@ fi
 # Install waydroid_script for GApps and ARM support
 print_step "Optional: Install Google Apps and ARM support"
 
-# Check if waydroid-script-git is already installed
+# Check if waydroid-extras command is available (from any source)
+WAYDROID_EXTRAS_CMD=""
+if command -v waydroid-extras &> /dev/null; then
+    WAYDROID_EXTRAS_CMD="waydroid-extras"
+elif command -v waydroid_extras &> /dev/null; then
+    WAYDROID_EXTRAS_CMD="waydroid_extras"
+fi
+
+# Check if installed via package or manually
 if pacman -Q waydroid-script-git &> /dev/null; then
-    print_success "waydroid-script-git is already installed"
+    print_success "waydroid-script-git is already installed (from package)"
     read -p "Run waydroid-extras to install GApps/ARM? (y/N): " run_extras
     if [[ "$run_extras" =~ ^[Yy]$ ]]; then
         sudo waydroid-extras
     fi
+elif [[ -n "$WAYDROID_EXTRAS_CMD" ]]; then
+    EXTRAS_PATH=$(which $WAYDROID_EXTRAS_CMD)
+    print_success "waydroid-extras found at: $EXTRAS_PATH (manual installation)"
+    read -p "Run waydroid-extras to install GApps/ARM? (y/N): " run_extras
+    if [[ "$run_extras" =~ ^[Yy]$ ]]; then
+        sudo $WAYDROID_EXTRAS_CMD
+    fi
 else
-    print_info "waydroid-script-git not found"
-    read -p "Install waydroid-script for GApps/ARM translation? (y/N): " install_script
-    if [[ "$install_script" =~ ^[Yy]$ ]]; then
+    # Not found in PATH or package - install from repos
+    print_info "waydroid-script not found in system"
+    read -p "Install waydroid-script-git from repos? (Y/n): " install_script
+    if [[ ! "$install_script" =~ ^[Nn]$ ]]; then
         # Check if waydroid-helper is available (GUI alternative)
         if pacman -Q waydroid-helper &> /dev/null; then
             print_info "waydroid-helper (GUI) is also available: sudo pacman -S waydroid-helper"
