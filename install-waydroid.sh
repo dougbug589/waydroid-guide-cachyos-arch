@@ -248,21 +248,34 @@ fi
 
 # Install waydroid_script for GApps and ARM support
 print_step "Optional: Install Google Apps and ARM support"
-read -p "Install waydroid-script for GApps/ARM translation? (y/N): " install_script
-if [[ "$install_script" =~ ^[Yy]$ ]]; then
-    # Check if waydroid-helper is available (GUI alternative)
-    if pacman -Q waydroid-helper &> /dev/null; then
-        print_info "waydroid-helper (GUI) is available: sudo pacman -S waydroid-helper"
+
+# Check if waydroid-script-git is already installed
+if pacman -Q waydroid-script-git &> /dev/null; then
+    print_success "waydroid-script-git is already installed"
+    read -p "Run waydroid-extras to install GApps/ARM? (y/N): " run_extras
+    if [[ "$run_extras" =~ ^[Yy]$ ]]; then
+        sudo waydroid-extras
     fi
-    
-    # Try to install from repos first
-    if pacman -Q waydroid-script-git &> /dev/null; then
-        print_info "waydroid-script already installed from repos"
-        sudo waydroid-extras
-    else
+else
+    print_info "waydroid-script-git not found"
+    read -p "Install waydroid-script for GApps/ARM translation? (y/N): " install_script
+    if [[ "$install_script" =~ ^[Yy]$ ]]; then
+        # Check if waydroid-helper is available (GUI alternative)
+        if pacman -Q waydroid-helper &> /dev/null; then
+            print_info "waydroid-helper (GUI) is also available: sudo pacman -S waydroid-helper"
+        fi
+        
         print_info "Installing waydroid-script-git..."
-        sudo pacman -S --noconfirm waydroid-script-git
-        sudo waydroid-extras
+        if sudo pacman -S --noconfirm waydroid-script-git; then
+            print_success "waydroid-script-git installed"
+            read -p "Run waydroid-extras now? (y/N): " run_extras
+            if [[ "$run_extras" =~ ^[Yy]$ ]]; then
+                sudo waydroid-extras
+            fi
+        else
+            print_error "Failed to install waydroid-script-git"
+            print_info "You can try manually: sudo pacman -S waydroid-script-git"
+        fi
     fi
 fi
 
