@@ -381,109 +381,92 @@ fi
 print_step "Optional: Setup file sharing with Android"
 read -p "Setup file sharing folder? (y/N): " setup_share
 if [[ "$setup_share" =~ ^[Yy]$ ]]; then
-    SHARE_PATH="$SCRIPT_HOME/SharedWithAndroid"
-    MOUNT_TARGET="$SCRIPT_HOME/.local/share/waydroid/data/media/0/SharedFolder"
+    SHARE_PATH="$SCRIPT_HOME/waydroid-sharedFolder"
+    MOUNT_TARGET="$SCRIPT_HOME/.local/share/waydroid/data/media/0/waydroid-sharedFolder"
 
+    # Create host folder
     mkdir -p "$SHARE_PATH"
+    print_success "Created host folder: $SHARE_PATH"
+    
+    # Create mount point inside Waydroid
     sudo mkdir -p "$MOUNT_TARGET"
+    print_info "Created mount point in Waydroid"
 
-    # Mount it
-    sudo mount --bind "$SHARE_PATH" "$MOUNT_TARGET" 2>/dev/null || print_warning "Could not mount immediately"
+    # Bind mount the folder
+    print_info "Creating bind mount..."
+    sudo mount --bind "$SHARE_PATH" "$MOUNT_TARGET"
+    
+    # Set permissions for host user access (optional)
+    sudo chmod o+rx "$SCRIPT_HOME/.local/share/waydroid/data/media/0"
+    sudo chmod o+rx "$MOUNT_TARGET"
+    
+    # Verify mount
+    if sudo test -d "$MOUNT_TARGET"; then
+        print_success "Bind mount successful!"
+    else
+        print_error "Mount verification failed"
+    fi
 
     # Add to fstab for persistence
     MOUNT_LINE="$SHARE_PATH $MOUNT_TARGET none bind 0 0"
-    if ! grep -q "$MOUNT_TARGET" /etc/fstab; then
-        print_info "Adding bind mount to /etc/fstab..."
+    if ! grep -q "$MOUNT_TARGET" /etc/fstab 2>/dev/null; then
+        print_info "Adding bind mount to /etc/fstab for persistence..."
         echo "$MOUNT_LINE" | sudo tee -a /etc/fstab > /dev/null
-        sudo mount -a
         print_success "File sharing configured (persistent)"
-        echo ""
-        print_info "Shared folder locations:"
-        echo "  📁 Host: $SHARE_PATH"
-        echo "  📱 Android: /sdcard/SharedFolder"
-        echo ""
-        print_info "Place files in $SHARE_PATH on your computer"
-        print_info "Access them in /sdcard/SharedFolder inside Waydroid"
     else
         print_info "Bind mount already in /etc/fstab"
-        echo ""
-        print_info "Shared folder: $SHARE_PATH (on host)"
-        print_info "Access in Waydroid: /sdcard/SharedFolder"
+    fi
+    
+    echo ""
+    print_success "✅ File sharing setup complete!"
+    echo ""
+    print_info "Shared folder locations:"
+    echo "  📁 Host folder:     $SHARE_PATH"
+    echo "  📱 Android path:    Internal storage/waydroid-sharedFolder"
+    echo ""
+    print_info "How to use:"
+    echo "  1. Place files in: $SHARE_PATH"
+    echo "  2. They appear instantly in Android Files app"
+    echo "  3. Look in: Internal storage → waydroid-sharedFolder"
+    echo ""
+    print_warning "Note: Waydroid needs restart to see the folder"
+    
+    # Restart Waydroid if running
+    if waydroid status 2>/dev/null | grep -q "RUNNING"; then
+        read -p "Restart Waydroid now to apply changes? (y/N): " restart_waydroid
+        if [[ "$restart_waydroid" =~ ^[Yy]$ ]]; then
+            print_info "Restarting Waydroid..."
+            waydroid session stop
+            sleep 2
+            sudo waydroid container restart
+            sleep 3
+            print_success "Waydroid restarted!"
+        fi
     fi
 fi
 
-# Setup auto-start without password
-print_step "Optional: Setup auto-start launcher"
-read -p "Create auto-start launcher (no password required)? (y/N): " setup_autostart
-if [[ "$setup_autostart" =~ ^[Yy]$ ]]; then
-    # Create startup script
-    print_info "Creating startup script..."
-    sudo tee /usr/local/bin/start-waydroid.sh > /dev/null <<'EOF'
-#!/bin/bash
-# Start Waydroid container & session
-sudo systemctl start waydroid-container.service
-waydroid session start
-EOF
-    sudo chmod +x /usr/local/bin/start-waydroid.sh
-
-    # Create desktop entry
-    print_info "Creating desktop entry..."
-    mkdir -p "$SCRIPT_HOME/.local/share/applications"
-    cat > "$SCRIPT_HOME/.local/share/applications/waydroid-start.desktop" <<'EOF'
-[Desktop Entry]
-Name=Start Waydroid
-Comment=Start Waydroid container and session
-Exec=/usr/local/bin/start-waydroid.sh
-Icon=waydroid
-Type=Application
-Terminal=false
-StartupNotify=true
-Categories=Utility;
-EOF
-    chmod +x "$SCRIPT_HOME/.local/share/applications/waydroid-start.desktop"
-    update-desktop-database "$SCRIPT_HOME/.local/share/applications/" 2>/dev/null || true
-
-    # Configure sudoers
-    print_info "Configuring sudoers for passwordless systemctl..."
-    SUDOERS_LINE="$SCRIPT_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl start waydroid-container.service"
-    SUDOERS_FILE="/etc/sudoers.d/waydroid-$SCRIPT_USER"
-
-    echo "$SUDOERS_LINE" | sudo tee "$SUDOERS_FILE" > /dev/null
-    sudo chmod 0440 "$SUDOERS_FILE"
-
-    print_success "Auto-start launcher created"
-    print_info "You can now start Waydroid from your application menu!"
-fi
-
-# Start Waydroid
+# Installation complete
 print_step "Installation complete!"
 echo ""
 print_success "Waydroid has been installed successfully!"
 echo ""
 print_info "Next steps:"
 echo "  1. Start Waydroid: waydroid show-full-ui"
-echo "  2. Or use the 'Start Waydroid' launcher from your application menu"
-echo "  3. Install apps: waydroid app install /path/to/app.apk"
-echo "  4. List installed apps: waydroid app list"
-echo "  5. Check status: waydroid status"
+echo "  2. Install apps: waydroid app install /path/to/app.apk"
+echo "  3. List installed apps: waydroid app list"
+echo "  4. Check status: waydroid status"
 echo ""
 print_info "Useful commands:"
 echo "  - View logs: journalctl -u waydroid-container -f"
+echo "  - Stop session: waydroid session stop"
+echo "  - Unfreeze (if frozen): sudo waydroid container unfreeze"
 echo "  - Check Android version: waydroid shell getprop ro.build.version.release"
 echo "  - Open shell: sudo waydroid shell"
 echo ""
-print_info "Session modes available:"
-echo "  - Full UI: waydroid show-full-ui (complete Android interface)"
-echo "  - Background: waydroid session start (apps in taskbar/launcher)"
-echo "  - First boot: waydroid first-launch (initial setup)"
-echo ""
 print_info "For more information, see: https://docs.waydro.id/"
 echo ""
-print_info "Note: If Waydroid becomes frozen, unfreeze with:"
-echo "  sudo waydroid container unfreeze"
-echo ""
 
-read -p "Start Waydroid session now? (y/N): " start_now
+read -p "Start Waydroid now? (y/N): " start_now
 if [[ "$start_now" =~ ^[Yy]$ ]]; then
     # Check if container is frozen and unfreeze if needed
     if waydroid status 2>/dev/null | grep -q "FROZEN"; then
@@ -492,69 +475,13 @@ if [[ "$start_now" =~ ^[Yy]$ ]]; then
         sleep 2
     fi
     
-    echo ""
-    echo "Choose Waydroid session mode:"
-    echo "  1. Full UI (complete Android interface)"
-    echo "  2. Background mode (apps in taskbar)"
-    echo "  3. First launch setup"
-    echo ""
-    read -p "Choose (1/2/3): " session_mode
-    
-    print_info "Starting Waydroid session..."
-    print_warning "Waiting for container to start (this may take a minute)..."
-    
-    case "$session_mode" in
-        1)
-            print_info "Starting in Full UI mode..."
-            waydroid session start &
-            SESSION_PID=$!
-            
-            # Wait for session to be ready
-            for i in {1..30}; do
-                if waydroid status 2>/dev/null | grep -q "RUNNING"; then
-                    print_success "Waydroid session is ready!"
-                    break
-                fi
-                sleep 2
-            done
-            
-            waydroid show-full-ui &
-            wait $SESSION_PID 2>/dev/null || true
-            ;;
-        2)
-            print_info "Starting in Background mode..."
-            waydroid session start
-            print_success "Waydroid running in background!"
-            print_info "Launch Android apps from your application menu"
-            ;;
-        3)
-            print_info "Starting first launch setup..."
-            waydroid first-launch
-            ;;
-        *)
-            print_warning "Invalid choice, starting in Full UI mode..."
-            waydroid session start &
-            SESSION_PID=$!
-            
-            for i in {1..30}; do
-                if waydroid status 2>/dev/null | grep -q "RUNNING"; then
-                    print_success "Waydroid session is ready!"
-                    break
-                fi
-                sleep 2
-            done
-            
-            waydroid show-full-ui &
-            wait $SESSION_PID 2>/dev/null || true
-            ;;
-    esac
+    print_info "Starting Waydroid..."
+    waydroid show-full-ui &
+    print_success "Waydroid started!"
+    print_info "Android interface should appear shortly"
 fi
 
 print_success "Done! Enjoy Waydroid!"
-echo ""
-print_info "Quick help commands:"
-echo "  Unfreeze (if frozen):     sudo waydroid container unfreeze"
-echo "  Check status:             waydroid status"
 echo "  View logs:                journalctl -u waydroid-container -f"
 echo "  Open shell:               sudo waydroid shell"
 echo "  Stop container:           sudo waydroid container stop"
