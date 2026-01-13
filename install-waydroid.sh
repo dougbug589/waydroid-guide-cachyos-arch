@@ -203,7 +203,7 @@ if [[ -f /var/lib/waydroid/images/system.img ]] && [[ -f /var/lib/waydroid/image
     print_info "Vendor image: $(du -h /var/lib/waydroid/images/vendor.img | cut -f1)"
     echo ""
     read -p "Keep existing images? (Y/n): " keep_images
-    
+
     if [[ "$keep_images" =~ ^[Nn]$ ]]; then
         print_warning "Will re-download images..."
         read -p "Install Google Play Store (GApps)? (y/N): " install_gapps
@@ -226,7 +226,7 @@ elif [[ -d /var/lib/waydroid ]]; then
     print_warning "Waydroid directory exists but images incomplete"
     read -p "Re-initialize? (Y/n): " reinit
     read -p "Install Google Play Store (GApps)? (y/N): " install_gapps
-    
+
     if [[ ! "$reinit" =~ ^[Nn]$ ]]; then
         if [[ "$install_gapps" =~ ^[Yy]$ ]]; then
             sudo waydroid init -s GAPPS -f
@@ -287,61 +287,83 @@ print_step "Optional: Install Google Apps and ARM support"
 
 # Check if waydroid-extras command is available (from any source)
 WAYDROID_EXTRAS_CMD=""
-if command -v waydroid-extras &> /dev/null; then
-    WAYDROID_EXTRAS_CMD="waydroid-extras"
-elif command -v waydroid_extras &> /dev/null; then
-    WAYDROID_EXTRAS_CMD="waydroid_extras"
-fi
-
 WAYDROID_SCRIPT_DIR="$SCRIPT_HOME/.local/share/waydroid_script"
 
-# Check if installed via package or manually
-if pacman -Q waydroid-script-git &> /dev/null; then
-    print_success "waydroid-script-git is already installed (from package)"
-    read -p "Run waydroid-extras to install GApps/ARM? (y/N): " run_extras
-    if [[ "$run_extras" =~ ^[Yy]$ ]]; then
-        sudo waydroid-extras
-    fi
-elif [[ -n "$WAYDROID_EXTRAS_CMD" ]]; then
-    EXTRAS_PATH=$(which $WAYDROID_EXTRAS_CMD)
-    print_success "waydroid-extras found at: $EXTRAS_PATH (manual installation)"
-    read -p "Run waydroid-extras to install GApps/ARM? (y/N): " run_extras
-    if [[ "$run_extras" =~ ^[Yy]$ ]]; then
-        sudo $WAYDROID_EXTRAS_CMD
-    fi
-elif [[ -d "$WAYDROID_SCRIPT_DIR" ]]; then
+# Check if cloned directory exists first (highest priority)
+if [[ -d "$WAYDROID_SCRIPT_DIR" ]]; then
     print_success "waydroid_script found at: $WAYDROID_SCRIPT_DIR"
     read -p "Update and run waydroid_extras? (y/N): " update_script
     if [[ "$update_script" =~ ^[Yy]$ ]]; then
         print_info "Updating waydroid_script from GitHub..."
         cd "$WAYDROID_SCRIPT_DIR"
         git pull
+        
+        # Setup venv if not exists
+        if [[ ! -d "venv" ]]; then
+            print_info "Creating virtual environment..."
+            python3 -m venv venv
+            venv/bin/pip install -r requirements.txt
+        fi
+        
         print_success "Updated"
-        sudo python3 main.py
+        sudo venv/bin/python3 main.py
+    fi
+# Check if installed via package
+elif pacman -Q waydroid-script-git &> /dev/null; then
+    print_success "waydroid-script-git is already installed (from package)"
+    read -p "Run waydroid-extras to install GApps/ARM? (y/N): " run_extras
+    if [[ "$run_extras" =~ ^[Yy]$ ]]; then
+        sudo waydroid-extras
+    fi
+# Check if command exists in PATH
+elif command -v waydroid-extras &> /dev/null || command -v waydroid_extras &> /dev/null; then
+    if command -v waydroid-extras &> /dev/null; then
+        WAYDROID_EXTRAS_CMD="waydroid-extras"
+    else
+        WAYDROID_EXTRAS_CMD="waydroid_extras"
+    fi
+    EXTRAS_PATH=$(which $WAYDROID_EXTRAS_CMD)
+    print_success "waydroid-extras found at: $EXTRAS_PATH (manual installation)"
+    read -p "Run waydroid-extras to install GApps/ARM? (y/N): " run_extras
+    if [[ "$run_extras" =~ ^[Yy]$ ]]; then
+        sudo $WAYDROID_EXTRAS_CMD
     fi
 else
-    # Not found - install from GitHub
+    # Not found - install from GitHub following author's instructions
     print_info "waydroid_script not found in system"
     read -p "Install waydroid_script from GitHub? (Y/n): " install_script
     if [[ ! "$install_script" =~ ^[Nn]$ ]]; then
         print_info "Installing waydroid_script from GitHub..."
-        
-        # Install dependencies
-        print_info "Installing dependencies..."
-        sudo pacman -S --needed --noconfirm python python-requests python-tqdm lzip sqlite
+        print_info "Repository: https://github.com/casualsnek/waydroid_script"
+
+        # Install system dependencies (git, python, lzip)
+        print_info "Installing system dependencies..."
+        sudo pacman -S --needed --noconfirm python git lzip
         
         # Clone repository
         mkdir -p "$(dirname "$WAYDROID_SCRIPT_DIR")"
         if git clone https://github.com/casualsnek/waydroid_script.git "$WAYDROID_SCRIPT_DIR"; then
-            print_success "waydroid_script installed to: $WAYDROID_SCRIPT_DIR"
+            print_success "waydroid_script cloned to: $WAYDROID_SCRIPT_DIR"
             
-            # Create symlink for easy access
-            sudo ln -sf "$WAYDROID_SCRIPT_DIR/main.py" /usr/local/bin/waydroid_extras 2>/dev/null || true
+            # Follow author's exact installation steps
+            cd "$WAYDROID_SCRIPT_DIR"
+            print_info "Creating Python virtual environment..."
+            python3 -m venv venv
             
-            read -p "Run waydroid_script now to install GApps/ARM? (y/N): " run_script
+            print_info "Installing Python dependencies..."
+            venv/bin/pip install -r requirements.txt
+            
+            print_success "Installation complete!"
+            echo ""
+            
+            read -p "Run waydroid_script now? (y/N): " run_script
             if [[ "$run_script" =~ ^[Yy]$ ]]; then
-                cd "$WAYDROID_SCRIPT_DIR"
-                sudo python3 main.py
+                print_info "Launching waydroid_script..."
+                sudo venv/bin/python3 main.py
+            else
+                print_info "To run later, use:"
+                echo "  cd $WAYDROID_SCRIPT_DIR"
+                echo "  sudo venv/bin/python3 main.py"
             fi
         else
             print_error "Failed to clone waydroid_script from GitHub"
@@ -356,13 +378,13 @@ read -p "Setup file sharing folder? (y/N): " setup_share
 if [[ "$setup_share" =~ ^[Yy]$ ]]; then
     SHARE_PATH="$SCRIPT_HOME/SharedWithAndroid"
     MOUNT_TARGET="$SCRIPT_HOME/.local/share/waydroid/data/media/0/SharedFolder"
-    
+
     mkdir -p "$SHARE_PATH"
     sudo mkdir -p "$MOUNT_TARGET"
-    
+
     # Mount it
     sudo mount --bind "$SHARE_PATH" "$MOUNT_TARGET" 2>/dev/null || print_warning "Could not mount immediately"
-    
+
     # Add to fstab for persistence
     MOUNT_LINE="$SHARE_PATH $MOUNT_TARGET none bind 0 0"
     if ! grep -q "$MOUNT_TARGET" /etc/fstab; then
@@ -389,7 +411,7 @@ sudo systemctl start waydroid-container.service
 waydroid session start
 EOF
     sudo chmod +x /usr/local/bin/start-waydroid.sh
-    
+
     # Create desktop entry
     print_info "Creating desktop entry..."
     mkdir -p "$SCRIPT_HOME/.local/share/applications"
@@ -406,15 +428,15 @@ Categories=Utility;
 EOF
     chmod +x "$SCRIPT_HOME/.local/share/applications/waydroid-start.desktop"
     update-desktop-database "$SCRIPT_HOME/.local/share/applications/" 2>/dev/null || true
-    
+
     # Configure sudoers
     print_info "Configuring sudoers for passwordless systemctl..."
     SUDOERS_LINE="$SCRIPT_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl start waydroid-container.service"
     SUDOERS_FILE="/etc/sudoers.d/waydroid-$SCRIPT_USER"
-    
+
     echo "$SUDOERS_LINE" | sudo tee "$SUDOERS_FILE" > /dev/null
     sudo chmod 0440 "$SUDOERS_FILE"
-    
+
     print_success "Auto-start launcher created"
     print_info "You can now start Waydroid from your application menu!"
 fi
@@ -445,7 +467,7 @@ if [[ "$start_now" =~ ^[Yy]$ ]]; then
     print_warning "Waiting for container to start (this may take a minute)..."
     waydroid session start &
     SESSION_PID=$!
-    
+
     # Wait for session to be ready
     for i in {1..30}; do
         if waydroid status 2>/dev/null | grep -q "RUNNING"; then
@@ -454,7 +476,7 @@ if [[ "$start_now" =~ ^[Yy]$ ]]; then
         fi
         sleep 2
     done
-    
+
     print_info "Launching Waydroid UI..."
     waydroid show-full-ui &
     wait $SESSION_PID 2>/dev/null || true
