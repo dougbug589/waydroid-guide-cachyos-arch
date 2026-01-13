@@ -159,21 +159,51 @@ print_success "binderfs systemd service created and enabled"
 
 # Initialize Waydroid
 print_step "Initializing Waydroid..."
-read -p "Install Google Play Store (GApps)? (y/N): " install_gapps
 
-if [[ -d /var/lib/waydroid ]]; then
-    print_warning "Waydroid already initialized"
-    read -p "Re-initialize? This will reset everything (y/N): " reinit
-    if [[ "$reinit" =~ ^[Yy]$ ]]; then
+# Check if images already exist
+if [[ -f /var/lib/waydroid/images/system.img ]] && [[ -f /var/lib/waydroid/images/vendor.img ]]; then
+    print_success "Waydroid images found!"
+    print_info "System image: $(du -h /var/lib/waydroid/images/system.img | cut -f1)"
+    print_info "Vendor image: $(du -h /var/lib/waydroid/images/vendor.img | cut -f1)"
+    echo ""
+    read -p "Keep existing images? (Y/n): " keep_images
+    
+    if [[ "$keep_images" =~ ^[Nn]$ ]]; then
+        print_warning "Will re-download images..."
+        read -p "Install Google Play Store (GApps)? (y/N): " install_gapps
         if [[ "$install_gapps" =~ ^[Yy]$ ]]; then
             sudo waydroid init -s GAPPS -f
+            print_success "Waydroid re-initialized with GApps"
         else
             sudo waydroid init -f
+            print_success "Waydroid re-initialized (no GApps)"
         fi
     else
-        print_info "Keeping existing Waydroid installation"
+        print_info "Keeping existing Waydroid images"
+        # Still need to ensure config exists
+        if [[ ! -f /var/lib/waydroid/waydroid.cfg ]]; then
+            print_warning "Config missing, running init without downloading images..."
+            sudo waydroid init || print_warning "Init failed but images are present"
+        fi
+    fi
+elif [[ -d /var/lib/waydroid ]]; then
+    print_warning "Waydroid directory exists but images incomplete"
+    read -p "Re-initialize? (Y/n): " reinit
+    read -p "Install Google Play Store (GApps)? (y/N): " install_gapps
+    
+    if [[ ! "$reinit" =~ ^[Nn]$ ]]; then
+        if [[ "$install_gapps" =~ ^[Yy]$ ]]; then
+            sudo waydroid init -s GAPPS -f
+            print_success "Waydroid initialized with GApps"
+        else
+            sudo waydroid init -f
+            print_success "Waydroid initialized (no GApps)"
+        fi
+    else
+        print_info "Skipping initialization"
     fi
 else
+    read -p "Install Google Play Store (GApps)? (y/N): " install_gapps
     if [[ "$install_gapps" =~ ^[Yy]$ ]]; then
         sudo waydroid init -s GAPPS
         print_success "Waydroid initialized with GApps"
@@ -187,8 +217,20 @@ fi
 print_step "Enabling and starting Waydroid services..."
 sudo systemctl daemon-reload
 sudo systemctl enable --now waydroid-container.service
-sudo systemctl enable --now waydroid-container.socket
-sudo systemctl mask waydroid-container-freeze.timer
+
+# Only enable socket if it exists
+if systemctl list-unit-files waydroid-container.socket &>/dev/null; then
+    sudo systemctl enable --now waydroid-container.socket
+    print_info "waydroid-container.socket enabled"
+else
+    print_info "waydroid-container.socket not found (not needed for all setups)"
+fi
+
+# Mask freeze timer if it exists
+if systemctl list-unit-files waydroid-container-freeze.timer &>/dev/null; then
+    sudo systemctl mask waydroid-container-freeze.timer
+fi
+
 print_success "Waydroid services enabled and started"
 
 # Configure UFW (if installed)
