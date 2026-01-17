@@ -396,15 +396,26 @@ if [[ "$setup_share" =~ ^[Yy]$ ]]; then
     print_info "Creating bind mount..."
     sudo mount --bind "$SHARE_PATH" "$MOUNT_TARGET"
     
-    # Set permissions for host user access (optional)
+    # Set permissions for host user access
     sudo chmod o+rx "$SCRIPT_HOME/.local/share/waydroid/data/media/0"
-    sudo chmod o+rx "$MOUNT_TARGET"
+    sudo chmod 777 "$MOUNT_TARGET"
+    
+    # Set proper ownership (Android media_rw UID/GID)
+    print_info "Setting Android-compatible ownership..."
+    sudo chown -R 1023:1023 "$MOUNT_TARGET"
     
     # Verify mount
     if sudo test -d "$MOUNT_TARGET"; then
         print_success "Bind mount successful!"
     else
         print_error "Mount verification failed"
+    fi
+    
+    # Trigger Android media scanner
+    if waydroid status 2>/dev/null | grep -q "RUNNING"; then
+        print_info "Triggering Android media scanner..."
+        waydroid shell am broadcast -a android.intent.action.MEDIA_MOUNTED -d file:///sdcard/waydroid-sharedFolder 2>/dev/null || true
+        print_success "Media scanner triggered"
     fi
 
     # Add to fstab for persistence
@@ -429,7 +440,9 @@ if [[ "$setup_share" =~ ^[Yy]$ ]]; then
     echo "  2. They appear instantly in Android Files app"
     echo "  3. Look in: Internal storage → waydroid-sharedFolder"
     echo ""
-    print_warning "Note: Waydroid needs restart to see the folder"
+    print_warning "IMPORTANT: Waydroid must be restarted for folder to appear!"
+    print_info "If files don't appear, try manually triggering the media scanner:"
+    echo "  waydroid shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/waydroid-sharedFolder"
     
     # Restart Waydroid if running
     if waydroid status 2>/dev/null | grep -q "RUNNING"; then

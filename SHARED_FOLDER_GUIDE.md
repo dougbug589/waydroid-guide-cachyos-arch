@@ -1,215 +1,171 @@
-# Waydroid Shared Folder Setup Guide
+# Waydroid File Sharing Guide (Symlink Method)
 
-Complete guide for sharing a folder between your Linux host and Waydroid Android container.
-
----
-
-## 🎯 Goal
-
-Share a host folder with Waydroid so files copied on Linux appear instantly inside Android.
-
-**Host folder:** `~/waydroid-sharedFolder`  
-**Android path:** `Internal storage/waydroid-sharedFolder`
+> **Note:** I use the symlink method for instant transfer between Linux and Waydroid. You can follow this symlink method below or set up a normal shared folder guide by yourself.
 
 ---
 
-## 📋 Quick Setup (Automated)
+## 🎯 What This Does
 
-The installation script handles this automatically if you choose "Setup file sharing folder" during installation.
-
-**Or run these manual steps:**
+Creates symbolic links to access Waydroid folders directly from your Linux home directory for instant file transfer.
 
 ---
 
-## 🛠️ Manual Setup Steps
+## 🛠️ Setup Steps
 
-### Step 1: Create the host folder
+### Step 1: Navigate to Waydroid data folder
 
 ```bash
-mkdir -p ~/waydroid-sharedFolder
+cd ~/.local/share/waydroid/data
 ```
 
-This is where you'll place files on your Linux system.
-
----
-
-### Step 2: Create the Waydroid mount point
-
-Waydroid exposes Android "Internal storage" at:
-```
-~/.local/share/waydroid/data/media/0/
-```
-
-Create a folder there that will appear inside Android:
+### Step 2: Check media folder permissions
 
 ```bash
-sudo mkdir -p ~/.local/share/waydroid/data/media/0/waydroid-sharedFolder
+ls -ld media
 ```
 
----
+This will show the folder's group (typically 1023).
 
-### Step 3: Bind-mount the folders
-
-Use a **bind mount** to make both paths point to the same files:
+### Step 3: Check your current groups
 
 ```bash
-sudo mount --bind ~/waydroid-sharedFolder \
-  ~/.local/share/waydroid/data/media/0/waydroid-sharedFolder
+groups
 ```
 
----
+### Step 4: Add yourself to the Waydroid media group
 
-### Step 4: Set permissions (optional)
-
-Allow your user to access the folder without sudo:
+Replace `username` with your actual username:
 
 ```bash
-sudo chmod o+rx ~/.local/share/waydroid/data/media/0
-sudo chmod o+rx ~/.local/share/waydroid/data/media/0/waydroid-sharedFolder
+sudo echo "waydroid:x:1023:username" >> /etc/group
 ```
 
----
-
-### Step 5: Verify the mount
-
-Check as root (normal users won't have permission):
+### Step 5: Reboot your system
 
 ```bash
-sudo ls ~/.local/share/waydroid/data/media/0/waydroid-sharedFolder
+reboot
 ```
 
----
+### Step 6: Verify group membership
 
-### Step 6: Make it persistent (survive reboots)
-
-Add to `/etc/fstab`:
+After rebooting, check that you're now in the group:
 
 ```bash
-echo "/home/$USER/waydroid-sharedFolder /home/$USER/.local/share/waydroid/data/media/0/waydroid-sharedFolder none bind 0 0" | sudo tee -a /etc/fstab
+groups
 ```
 
----
+### Step 7: Create symbolic links
 
-### Step 7: Restart Waydroid
-
-Android needs a restart to see the new folder:
+Create a symlink to Waydroid's Download folder (or any other folder):
 
 ```bash
-waydroid session stop
-sleep 2
-sudo waydroid container restart
-sleep 3
-waydroid session start
+ln --symbolic ~/.local/share/waydroid/data/media/0/Download ~/WaydroidDownload
 ```
 
----
+You can create links to other folders as needed:
 
-## 📱 Using the Shared Folder
-
-### Inside Android (Waydroid)
-
-1. Open **Files** app
-2. Navigate to: **Internal storage**
-3. You'll see: **waydroid-sharedFolder**
-4. All files appear instantly!
-
-### On Linux Host
-
-Simply place files in:
 ```bash
-~/waydroid-sharedFolder
-```
+# For Pictures
+ln --symbolic ~/.local/share/waydroid/data/media/0/Pictures ~/WaydroidPictures
 
-They appear immediately in Android - no sync needed!
+# For Documents
+ln --symbolic ~/.local/share/waydroid/data/media/0/Documents ~/WaydroidDocuments
+
+# For DCIM (Camera)
+ln --symbolic ~/.local/share/waydroid/data/media/0/DCIM ~/WaydroidDCIM
+```
 
 ---
 
-## 🔍 Permission Behavior (Important)
+## ✅ Usage
 
-| Command | Result | Why |
-|---------|--------|-----|
-| `ls ~/waydroid-sharedFolder` | ✅ Works | Your folder, your permissions |
-| `ls ~/.local/share/waydroid/data/media/0/waydroid-sharedFolder` | ❌ Permission denied | Owned by Android (root/media_rw) |
-| `sudo ls ~/.local/share/waydroid/data/media/0/waydroid-sharedFolder` | ✅ Works | Root can access |
-| Android Files app | ✅ Works | Android's media layer handles it |
+Now anything you put in `~/WaydroidDownload` from Linux will be instantly visible in Waydroid's Download folder, and vice versa.
 
-**This is expected behavior!** Android apps access files via Android's media layer, not Linux permissions.
+No mounting or restarting required - changes appear instantly!
+
+---
+
+## 📱 Accessing Files
+
+### From Linux
+
+Access Waydroid files through the symlinks in your home directory:
+
+```bash
+# List files in Waydroid's Download folder
+ls ~/WaydroidDownload
+
+# Copy a file to Waydroid
+cp myfile.pdf ~/WaydroidDownload/
+
+# Open Waydroid's Downloads in file manager
+xdg-open ~/WaydroidDownload
+```
+
+### From Android (Waydroid)
+
+1. Open any **File Manager** app
+2. Navigate to **Download**, **Pictures**, **Documents**, etc.
+3. Files placed via the symlinks will be instantly visible!
 
 ---
 
 ## 🗑️ Undo Everything
 
-If you want to remove the shared folder:
+If you want to remove the symlinks:
 
 ```bash
-# Unmount
-sudo umount ~/.local/share/waydroid/data/media/0/waydroid-sharedFolder
+# Remove symlinks
+rm ~/WaydroidDownload
+rm ~/WaydroidPictures
+rm ~/WaydroidDocuments
+rm ~/WaydroidDCIM
 
-# Remove mount point
-sudo rmdir ~/.local/share/waydroid/data/media/0/waydroid-sharedFolder
-
-# Remove from fstab (optional)
-sudo sed -i '/waydroid-sharedFolder/d' /etc/fstab
-
-# Optionally remove host folder
-rm -rf ~/waydroid-sharedFolder
+# Remove yourself from the waydroid group (optional)
+sudo sed -i '/waydroid:x:1023/d' /etc/group
 ```
 
 ---
 
 ## 🐛 Troubleshooting
 
-### Folder doesn't appear in Android
+### "Permission denied" when accessing symlinks
 
-**Solution:** Restart Waydroid
+**Solution:** Make sure you completed Steps 4-6 to add yourself to the waydroid group and rebooted.
+
+Verify you're in the group:
 ```bash
-waydroid session stop
-sudo waydroid container restart
+groups | grep waydroid
+```
+
+### Symlink shows red or broken in file manager
+
+**Solution:** Make sure Waydroid is initialized and the folders exist:
+```bash
+ls -la ~/.local/share/waydroid/data/media/0/
+```
+
+If the folders don't exist, start Waydroid first:
+```bash
 waydroid session start
 ```
 
-### "Permission denied" when accessing on host
+### Files not appearing in Android
 
-**This is normal!** Android owns the mount point. Use:
-```bash
-sudo ls ~/.local/share/waydroid/data/media/0/waydroid-sharedFolder
-```
+**Solution:** Wait a few seconds or restart the Android app. Android sometimes needs to rescan media files.
 
-Or add permissions:
-```bash
-sudo chmod o+rx ~/.local/share/waydroid/data/media/0
-sudo chmod o+rx ~/.local/share/waydroid/data/media/0/waydroid-sharedFolder
-```
-
-### Mount doesn't survive reboot
-
-**Check fstab:**
-```bash
-grep waydroid-sharedFolder /etc/fstab
-```
-
-Should show:
-```
-/home/username/waydroid-sharedFolder /home/username/.local/share/waydroid/data/media/0/waydroid-sharedFolder none bind 0 0
-```
-
-### Files not syncing
-
-**Bind mounts are instant!** If files don't appear:
-1. Verify mount: `mount | grep waydroid-sharedFolder`
-2. Check host folder: `ls ~/waydroid-sharedFolder`
-3. Restart Waydroid
+Open **Files** app in Android and pull down to refresh.
 
 ---
 
 ## 💡 Key Takeaways
 
-✅ Use `mount --bind` for folder sharing  
-✅ Target directory must exist before mounting  
-✅ "Permission denied" on host ≠ failure  
-✅ Android access works regardless of Linux permissions  
-✅ Files sync instantly (it's the same folder!)  
-✅ Restart Waydroid to see new folders  
+✅ Symlinks provide direct access to Waydroid folders  
+✅ No mounting or bind mounts required  
+✅ Changes appear instantly (it's the same folder!)  
+✅ Works with any folder in Waydroid's internal storage  
+✅ Simple, reliable Unix/Linux feature since the 1980s  
+✅ No need to restart Waydroid  
 
 ---
 
@@ -217,36 +173,40 @@ Should show:
 
 ### How it works
 
-A **bind mount** makes two directory paths point to the same underlying filesystem location. Changes in one location appear instantly in the other because they're literally the same files.
+A **symbolic link** (symlink) is a special file that points to another file or directory. When you access the symlink, the operating system transparently redirects you to the target location.
 
-### Mount command breakdown
+### Symlink command breakdown
 
 ```bash
-sudo mount --bind <source> <target>
+ln --symbolic <target> <link_name>
 ```
 
-- **source:** Your Linux folder (`~/waydroid-sharedFolder`)
-- **target:** Waydroid's internal storage path
-- **--bind:** Creates a bind mount (directory to directory)
-- **sudo:** Required because target is in Waydroid's protected space
+- **target:** The Waydroid folder (`~/.local/share/waydroid/data/media/0/Download`)
+- **link_name:** The symlink location (`~/WaydroidDownload`)
+- **--symbolic:** Creates a symbolic link (can span filesystems)
 
-### Why permissions are "denied"
+### Why add to group 1023?
 
-The target path (`~/.local/share/waydroid/data/media/0/`) is owned by Android's user (`root` or `media_rw`). Your user doesn't have permission to access Android's internal directories directly.
-
-However:
-- Android apps can access it normally
-- You can access via `sudo`
-- The source folder (`~/waydroid-sharedFolder`) remains fully accessible
+Waydroid's media storage uses Android's permission system. The `media` folder is owned by group 1023 (Android's `media_rw` group). Adding yourself to this group grants read/write access to Waydroid's internal storage folders.
 
 ---
 
-## 🔗 Related Documentation
+## 🔗 Reference
 
-- [Waydroid Official Docs](https://docs.waydro.id/)
-- [Linux Bind Mounts](https://man7.org/linux/man-pages/man8/mount.8.html)
-- [Main Installation Guide](README.md)
-- [Changelog](CHANGELOG.md)
+Based on: https://github.com/waydroid/waydroid/discussions/2150
+
+### Alternative Method
+
+If you prefer the traditional bind mount approach, you can set it up yourself following the official Waydroid documentation at: https://docs.waydro.id/faq/setting-up-a-shared-folder
+
+---
+
+## 📝 Notes
+
+- Replace `username` in Step 4 with your actual Linux username
+- You can name the symlinks whatever you want (e.g., `~/WaydroidDownload`, `~/AndroidFiles`, etc.)
+- The symlink method is simpler than bind mounts - no fstab configuration needed!
+- Changes are instant - no manual syncing or delays
 
 ---
 
