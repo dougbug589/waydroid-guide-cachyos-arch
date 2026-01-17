@@ -410,68 +410,42 @@ if [[ "$setup_share" =~ ^[Yy]$ ]]; then
             print_warning "Group membership requires re-login or reboot to take effect"
         fi
         
-        # Create symlinks to common Android folders
-        print_info "Creating symlinks to Waydroid folders..."
+        # Create a single shared folder
+        SHARED_FOLDER="Waydroid"
+        SYMLINK_PATH="$SCRIPT_HOME/$SHARED_FOLDER"
+        WAYDROID_SHARED="$WAYDROID_DATA/$SHARED_FOLDER"
         
-        # Download folder
-        if [[ ! -e "$SCRIPT_HOME/WaydroidDownload" ]]; then
-            if [[ -d "$WAYDROID_DATA/Download" ]]; then
-                ln -s "$WAYDROID_DATA/Download" "$SCRIPT_HOME/WaydroidDownload"
-                print_success "Created: ~/WaydroidDownload"
-            else
-                print_warning "Download folder not found in Waydroid yet"
-            fi
+        print_info "Creating shared folder in Waydroid..."
+        
+        # Create the folder in Waydroid's internal storage
+        if [[ ! -d "$WAYDROID_SHARED" ]]; then
+            mkdir -p "$WAYDROID_SHARED"
+            print_success "Created folder in Waydroid: $SHARED_FOLDER"
         else
-            print_info "~/WaydroidDownload already exists"
+            print_info "Folder already exists in Waydroid: $SHARED_FOLDER"
         fi
         
-        # Pictures folder
-        if [[ ! -e "$SCRIPT_HOME/WaydroidPictures" ]]; then
-            if [[ -d "$WAYDROID_DATA/Pictures" ]]; then
-                ln -s "$WAYDROID_DATA/Pictures" "$SCRIPT_HOME/WaydroidPictures"
-                print_success "Created: ~/WaydroidPictures"
-            else
-                print_warning "Pictures folder not found in Waydroid yet"
-            fi
+        # Create symlink from home directory to Waydroid folder
+        if [[ ! -e "$SYMLINK_PATH" ]]; then
+            ln -s "$WAYDROID_SHARED" "$SYMLINK_PATH"
+            print_success "Created symlink: ~/$SHARED_FOLDER"
         else
-            print_info "~/WaydroidPictures already exists"
-        fi
-        
-        # Documents folder
-        if [[ ! -e "$SCRIPT_HOME/WaydroidDocuments" ]]; then
-            if [[ -d "$WAYDROID_DATA/Documents" ]]; then
-                ln -s "$WAYDROID_DATA/Documents" "$SCRIPT_HOME/WaydroidDocuments"
-                print_success "Created: ~/WaydroidDocuments"
+            if [[ -L "$SYMLINK_PATH" ]]; then
+                print_info "Symlink already exists: ~/$SHARED_FOLDER"
             else
-                print_warning "Documents folder not found in Waydroid yet"
+                print_error "~/$SHARED_FOLDER exists but is not a symlink. Please remove it first."
             fi
-        else
-            print_info "~/WaydroidDocuments already exists"
-        fi
-        
-        # DCIM folder (Camera)
-        if [[ ! -e "$SCRIPT_HOME/WaydroidDCIM" ]]; then
-            if [[ -d "$WAYDROID_DATA/DCIM" ]]; then
-                ln -s "$WAYDROID_DATA/DCIM" "$SCRIPT_HOME/WaydroidDCIM"
-                print_success "Created: ~/WaydroidDCIM"
-            else
-                print_warning "DCIM folder not found in Waydroid yet"
-            fi
-        else
-            print_info "~/WaydroidDCIM already exists"
         fi
         
         echo ""
-        print_success "✅ File sharing symlinks created!"
+        print_success "✅ File sharing symlink created!"
         echo ""
-        print_info "Access Waydroid files from:"
-        echo "  📁 ~/WaydroidDownload   → Android Downloads"
-        echo "  📁 ~/WaydroidPictures   → Android Pictures"
-        echo "  📁 ~/WaydroidDocuments  → Android Documents"
-        echo "  📁 ~/WaydroidDCIM       → Android Camera"
+        print_info "Access shared files from:"
+        echo "  📁 Linux:    ~/$SHARED_FOLDER"
+        echo "  📱 Android:  Internal storage/$SHARED_FOLDER"
         echo ""
         print_info "How to use:"
-        echo "  1. Copy files to ~/WaydroidDownload (or other folders)"
+        echo "  1. Copy files to ~/$SHARED_FOLDER"
         echo "  2. Files appear instantly in Android - no restart needed!"
         echo "  3. Changes work both ways (Linux ↔ Android)"
         echo ""
