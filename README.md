@@ -29,6 +29,7 @@ Complete manual installation with detailed explanations
 ### 🔧 Additional Resources
 - [Prerequisites & Requirements](#-comprehensive-prerequisites)
 - [Google Apps & ARM Translation](#install-gapps-and-arm-translation) (via [waydroid_script](https://github.com/casualsnek/waydroid_script))
+- [File Sharing Guide](SHARED_FOLDER_GUIDE.md) - Symlink method for instant file transfer
 - [Troubleshooting Guide](#troubleshooting)
 - [Changelog](CHANGELOG.md) - Recent fixes and improvements
 
@@ -46,7 +47,7 @@ Complete manual installation with detailed explanations
 - ✅ Integrated [waydroid_script](https://github.com/casualsnek/waydroid_script) for GApps & ARM
 - ✅ Automatic service configuration
 - ✅ Firewall setup (optional)
-- ✅ File sharing setup (optional)
+- ✅ File sharing setup with bind mount (optional - see [Shared Folder Guide](SHARED_FOLDER_GUIDE.md) for symlink alternative)
 
 ### Quick Start:
 
@@ -949,9 +950,36 @@ If you have Nvidia + Intel/AMD:
 
 ## 📂 File Sharing Between Linux and Android
 
-### Quick Setup
+> **Recommended:** See [SHARED_FOLDER_GUIDE.md](SHARED_FOLDER_GUIDE.md) for the **symlink method** - simpler setup with instant file transfer and no mounting required!
 
-Create shared folder accessible from both systems:
+### Method 1: Symlink Method (Recommended)
+
+The symlink method provides direct access to Waydroid folders without bind mounts or fstab configuration.
+
+**Quick Setup:**
+```bash
+# Add yourself to Waydroid media group
+sudo echo "waydroid:x:1023:$USER" >> /etc/group
+
+# Reboot to apply group membership
+sudo reboot
+
+# Create symlink to Downloads folder
+ln -s ~/.local/share/waydroid/data/media/0/Download ~/WaydroidDownload
+```
+
+**Benefits:**
+- ✅ No mounting required
+- ✅ No fstab configuration
+- ✅ Changes appear instantly
+- ✅ Simpler setup and maintenance
+- ✅ No restart needed
+
+**See [SHARED_FOLDER_GUIDE.md](SHARED_FOLDER_GUIDE.md) for complete instructions.**
+
+### Method 2: Bind Mount (Traditional)
+
+Create shared folder with bind mount (used by automated installer):
 
 ```bash
 # Create Linux folder
@@ -969,9 +997,7 @@ mount | grep SharedFolder
 
 **Access in Waydroid:** Files appear at `/sdcard/SharedFolder`
 
-### Make File Sharing Permanent
-
-Add to `/etc/fstab` (replace `YOUR_USERNAME`):
+**Make Permanent:** Add to `/etc/fstab` (replace `YOUR_USERNAME`):
 
 ```
 /home/YOUR_USERNAME/SharedWithAndroid /home/YOUR_USERNAME/.local/share/waydroid/data/media/0/SharedFolder none bind 0 0
