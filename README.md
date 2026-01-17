@@ -29,7 +29,7 @@ Complete manual installation with detailed explanations
 ### 🔧 Additional Resources
 - [Prerequisites & Requirements](#-comprehensive-prerequisites)
 - [Google Apps & ARM Translation](#install-gapps-and-arm-translation) (via [waydroid_script](https://github.com/casualsnek/waydroid_script))
-- [File Sharing Guide](SHARED_FOLDER_GUIDE.md) - Symlink method for instant file transfer
+- [File Sharing Setup](#-file-sharing-between-linux-and-android) - Symlink method for instant file transfer
 - [Troubleshooting Guide](#troubleshooting)
 - [Changelog](CHANGELOG.md) - Recent fixes and improvements
 
@@ -47,7 +47,7 @@ Complete manual installation with detailed explanations
 - ✅ Integrated [waydroid_script](https://github.com/casualsnek/waydroid_script) for GApps & ARM
 - ✅ Automatic service configuration
 - ✅ Firewall setup (optional)
-- ✅ File sharing setup with bind mount (optional - see [Shared Folder Guide](SHARED_FOLDER_GUIDE.md) for symlink alternative)
+- ✅ File sharing setup with bind mount (optional - see file sharing section below for symlink alternative)
 
 ### Quick Start:
 
@@ -950,23 +950,11 @@ If you have Nvidia + Intel/AMD:
 
 ## 📂 File Sharing Between Linux and Android
 
-> **Recommended:** See [SHARED_FOLDER_GUIDE.md](SHARED_FOLDER_GUIDE.md) for the **symlink method** - simpler setup with instant file transfer and no mounting required!
+> **Note:** I use the symlink method for instant transfer between Linux and Waydroid. You can follow this symlink method below or set up a normal shared folder guide by yourself.
 
-### Method 1: Symlink Method (Recommended)
+### Method 1: Symlink Method (Recommended) ⭐
 
-The symlink method provides direct access to Waydroid folders without bind mounts or fstab configuration.
-
-**Quick Setup:**
-```bash
-# Add yourself to Waydroid media group
-sudo echo "waydroid:x:1023:$USER" >> /etc/group
-
-# Reboot to apply group membership
-sudo reboot
-
-# Create symlink to Downloads folder
-ln -s ~/.local/share/waydroid/data/media/0/Download ~/WaydroidDownload
-```
+Creates symbolic links to access Waydroid folders directly from your Linux home directory for instant file transfer.
 
 **Benefits:**
 - ✅ No mounting required
@@ -975,7 +963,159 @@ ln -s ~/.local/share/waydroid/data/media/0/Download ~/WaydroidDownload
 - ✅ Simpler setup and maintenance
 - ✅ No restart needed
 
-**See [SHARED_FOLDER_GUIDE.md](SHARED_FOLDER_GUIDE.md) for complete instructions.**
+#### Setup Steps
+
+**Step 1: Navigate to Waydroid data folder**
+
+```bash
+cd ~/.local/share/waydroid/data
+```
+
+**Step 2: Check media folder permissions**
+
+```bash
+ls -ld media
+```
+
+This will show the folder's group (typically 1023).
+
+**Step 3: Check your current groups**
+
+```bash
+groups
+```
+
+**Step 4: Add yourself to the Waydroid media group**
+
+Replace `username` with your actual username:
+
+```bash
+sudo echo "waydroid:x:1023:username" >> /etc/group
+```
+
+**Step 5: Reboot your system**
+
+```bash
+reboot
+```
+
+**Step 6: Verify group membership**
+
+After rebooting, check that you're now in the group:
+
+```bash
+groups
+```
+
+**Step 7: Create symbolic links**
+
+Create a symlink to Waydroid's Download folder (or any other folder):
+
+```bash
+ln --symbolic ~/.local/share/waydroid/data/media/0/Download ~/WaydroidDownload
+```
+
+You can create links to other folders as needed:
+
+```bash
+# For Pictures
+ln --symbolic ~/.local/share/waydroid/data/media/0/Pictures ~/WaydroidPictures
+
+# For Documents
+ln --symbolic ~/.local/share/waydroid/data/media/0/Documents ~/WaydroidDocuments
+
+# For DCIM (Camera)
+ln --symbolic ~/.local/share/waydroid/data/media/0/DCIM ~/WaydroidDCIM
+```
+
+#### Usage
+
+Now anything you put in `~/WaydroidDownload` from Linux will be instantly visible in Waydroid's Download folder, and vice versa.
+
+**From Linux:**
+
+```bash
+# List files in Waydroid's Download folder
+ls ~/WaydroidDownload
+
+# Copy a file to Waydroid
+cp myfile.pdf ~/WaydroidDownload/
+
+# Open Waydroid's Downloads in file manager
+xdg-open ~/WaydroidDownload
+```
+
+**From Android (Waydroid):**
+
+1. Open any **File Manager** app
+2. Navigate to **Download**, **Pictures**, **Documents**, etc.
+3. Files placed via the symlinks will be instantly visible!
+
+#### Troubleshooting Symlinks
+
+**"Permission denied" when accessing symlinks:**
+
+Make sure you completed Steps 4-6 to add yourself to the waydroid group and rebooted.
+
+Verify you're in the group:
+```bash
+groups | grep waydroid
+```
+
+**Symlink shows red or broken in file manager:**
+
+Make sure Waydroid is initialized and the folders exist:
+```bash
+ls -la ~/.local/share/waydroid/data/media/0/
+```
+
+If the folders don't exist, start Waydroid first:
+```bash
+waydroid session start
+```
+
+**Files not appearing in Android:**
+
+Wait a few seconds or restart the Android app. Android sometimes needs to rescan media files. Open **Files** app in Android and pull down to refresh.
+
+#### Technical Details
+
+**How it works:**
+
+A **symbolic link** (symlink) is a special file that points to another file or directory. When you access the symlink, the operating system transparently redirects you to the target location.
+
+**Command breakdown:**
+
+```bash
+ln --symbolic <target> <link_name>
+```
+
+- **target:** The Waydroid folder (`~/.local/share/waydroid/data/media/0/Download`)
+- **link_name:** The symlink location (`~/WaydroidDownload`)
+- **--symbolic:** Creates a symbolic link (can span filesystems)
+
+**Why add to group 1023?**
+
+Waydroid's media storage uses Android's permission system. The `media` folder is owned by group 1023 (Android's `media_rw` group). Adding yourself to this group grants read/write access to Waydroid's internal storage folders.
+
+#### Undo Symlinks
+
+If you want to remove the symlinks:
+
+```bash
+# Remove symlinks
+rm ~/WaydroidDownload
+rm ~/WaydroidPictures
+rm ~/WaydroidDocuments
+rm ~/WaydroidDCIM
+
+# Remove yourself from the waydroid group (optional)
+sudo sed -i '/waydroid:x:1023/d' /etc/group
+```
+
+**Reference:** Based on https://github.com/waydroid/waydroid/discussions/2150
+
+---
 
 ### Method 2: Bind Mount (Traditional)
 
@@ -1012,6 +1152,8 @@ Reload fstab:
 ```bash
 sudo mount -a
 ```
+
+**Alternative reference:** https://docs.waydro.id/faq/setting-up-a-shared-folder
 
 ---
 
