@@ -47,7 +47,7 @@ Complete manual installation with detailed explanations
 - ✅ Integrated [waydroid_script](https://github.com/casualsnek/waydroid_script) for GApps & ARM
 - ✅ Automatic service configuration
 - ✅ Firewall setup (optional)
-- ✅ File sharing setup with bind mount (optional - see file sharing section below for symlink alternative)
+- ✅ File sharing with symlinks (optional - instant transfer, no mounting)
 
 ### Quick Start:
 
@@ -66,7 +66,7 @@ The script will guide you through:
 2. Waydroid installation
 3. Image download or preservation
 4. GApps & ARM translation (via [@casualsnek's waydroid_script](https://github.com/casualsnek/waydroid_script))
-5. Optional features (file sharing, auto-start launcher)
+5. Optional features (symlink file sharing)
 6. Session mode selection
 
 **Credits:** GApps and ARM translation powered by [@casualsnek's waydroid_script](https://github.com/casualsnek/waydroid_script)
