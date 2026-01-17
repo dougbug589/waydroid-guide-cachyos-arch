@@ -377,83 +377,114 @@ else
     fi
 fi
 
-# Setup file sharing
-print_step "Optional: Setup file sharing with Android"
-read -p "Setup file sharing folder? (y/N): " setup_share
+# Setup file sharing (symlink method)
+print_step "Optional: Setup file sharing with Android (Symlink Method)"
+read -p "Setup file sharing with symlinks? (y/N): " setup_share
 if [[ "$setup_share" =~ ^[Yy]$ ]]; then
-    SHARE_PATH="$SCRIPT_HOME/waydroid-sharedFolder"
-    MOUNT_TARGET="$SCRIPT_HOME/.local/share/waydroid/data/media/0/waydroid-sharedFolder"
-
-    # Create host folder
-    mkdir -p "$SHARE_PATH"
-    print_success "Created host folder: $SHARE_PATH"
+    print_info "Using symlink method for instant file transfer"
     
-    # Create mount point inside Waydroid
-    sudo mkdir -p "$MOUNT_TARGET"
-    print_info "Created mount point in Waydroid"
-
-    # Bind mount the folder
-    print_info "Creating bind mount..."
-    sudo mount --bind "$SHARE_PATH" "$MOUNT_TARGET"
-    
-    # Set permissions for host user access
-    sudo chmod o+rx "$SCRIPT_HOME/.local/share/waydroid/data/media/0"
-    sudo chmod 777 "$MOUNT_TARGET"
-    
-    # Set proper ownership (Android media_rw UID/GID)
-    print_info "Setting Android-compatible ownership..."
-    sudo chown -R 1023:1023 "$MOUNT_TARGET"
-    
-    # Verify mount
-    if sudo test -d "$MOUNT_TARGET"; then
-        print_success "Bind mount successful!"
+    # Check if Waydroid data directory exists
+    WAYDROID_DATA="$SCRIPT_HOME/.local/share/waydroid/data/media/0"
+    if [[ ! -d "$WAYDROID_DATA" ]]; then
+        print_warning "Waydroid not initialized yet. Please run 'waydroid session start' first."
+        print_info "Skipping file sharing setup for now. You can set it up manually later."
     else
-        print_error "Mount verification failed"
-    fi
-    
-    # Trigger Android media scanner
-    if waydroid status 2>/dev/null | grep -q "RUNNING"; then
-        print_info "Triggering Android media scanner..."
-        waydroid shell am broadcast -a android.intent.action.MEDIA_MOUNTED -d file:///sdcard/waydroid-sharedFolder 2>/dev/null || true
-        print_success "Media scanner triggered"
-    fi
-
-    # Add to fstab for persistence
-    MOUNT_LINE="$SHARE_PATH $MOUNT_TARGET none bind 0 0"
-    if ! grep -q "$MOUNT_TARGET" /etc/fstab 2>/dev/null; then
-        print_info "Adding bind mount to /etc/fstab for persistence..."
-        echo "$MOUNT_LINE" | sudo tee -a /etc/fstab > /dev/null
-        print_success "File sharing configured (persistent)"
-    else
-        print_info "Bind mount already in /etc/fstab"
-    fi
-    
-    echo ""
-    print_success "✅ File sharing setup complete!"
-    echo ""
-    print_info "Shared folder locations:"
-    echo "  📁 Host folder:     $SHARE_PATH"
-    echo "  📱 Android path:    Internal storage/waydroid-sharedFolder"
-    echo ""
-    print_info "How to use:"
-    echo "  1. Place files in: $SHARE_PATH"
-    echo "  2. They appear instantly in Android Files app"
-    echo "  3. Look in: Internal storage → waydroid-sharedFolder"
-    echo ""
-    print_warning "IMPORTANT: Waydroid must be restarted for folder to appear!"
-    print_info "If files don't appear, try manually triggering the media scanner:"
-    echo "  waydroid shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/waydroid-sharedFolder"
-    
-    # Restart Waydroid if running
-    if waydroid status 2>/dev/null | grep -q "RUNNING"; then
-        read -p "Restart Waydroid now to apply changes? (y/N): " restart_waydroid
-        if [[ "$restart_waydroid" =~ ^[Yy]$ ]]; then
-            print_info "Restarting Waydroid..."
-            waydroid session stop
-            sleep 2
-            sudo waydroid container restart
-            sleep 3
-            print_success "Waydroid restarted!"
+        # Check if user is already in waydroid group
+        if groups | grep -q "waydroid"; then
+            print_info "Already in waydroid group (1023)"
+        else
+            # Add user to waydroid group (1023)
+            print_info "Adding $SCRIPT_USER to waydroid group (1023)..."
+            
+            # Check if group already exists
+            if grep -q "^waydroid:x:1023:" /etc/group; then
+                # Group exists, just add user to it
+                sudo usermod -aG waydroid "$SCRIPT_USER"
+                print_success "Added to existing waydroid group"
+            else
+                # Create group and add user
+                echo "waydroid:x:1023:$SCRIPT_USER" | sudo tee -a /etc/group > /dev/null
+                print_success "Created waydroid group and added user"
+            fi
+            
+            print_warning "Group membership requires re-login or reboot to take effect"
+        fi
+        
+        # Create symlinks to common Android folders
+        print_info "Creating symlinks to Waydroid folders..."
+        
+        # Download folder
+        if [[ ! -e "$SCRIPT_HOME/WaydroidDownload" ]]; then
+            if [[ -d "$WAYDROID_DATA/Download" ]]; then
+                ln -s "$WAYDROID_DATA/Download" "$SCRIPT_HOME/WaydroidDownload"
+                print_success "Created: ~/WaydroidDownload"
+            else
+                print_warning "Download folder not found in Waydroid yet"
+            fi
+        else
+            print_info "~/WaydroidDownload already exists"
+        fi
+        
+        # Pictures folder
+        if [[ ! -e "$SCRIPT_HOME/WaydroidPictures" ]]; then
+            if [[ -d "$WAYDROID_DATA/Pictures" ]]; then
+                ln -s "$WAYDROID_DATA/Pictures" "$SCRIPT_HOME/WaydroidPictures"
+                print_success "Created: ~/WaydroidPictures"
+            else
+                print_warning "Pictures folder not found in Waydroid yet"
+            fi
+        else
+            print_info "~/WaydroidPictures already exists"
+        fi
+        
+        # Documents folder
+        if [[ ! -e "$SCRIPT_HOME/WaydroidDocuments" ]]; then
+            if [[ -d "$WAYDROID_DATA/Documents" ]]; then
+                ln -s "$WAYDROID_DATA/Documents" "$SCRIPT_HOME/WaydroidDocuments"
+                print_success "Created: ~/WaydroidDocuments"
+            else
+                print_warning "Documents folder not found in Waydroid yet"
+            fi
+        else
+            print_info "~/WaydroidDocuments already exists"
+        fi
+        
+        # DCIM folder (Camera)
+        if [[ ! -e "$SCRIPT_HOME/WaydroidDCIM" ]]; then
+            if [[ -d "$WAYDROID_DATA/DCIM" ]]; then
+                ln -s "$WAYDROID_DATA/DCIM" "$SCRIPT_HOME/WaydroidDCIM"
+                print_success "Created: ~/WaydroidDCIM"
+            else
+                print_warning "DCIM folder not found in Waydroid yet"
+            fi
+        else
+            print_info "~/WaydroidDCIM already exists"
+        fi
+        
+        echo ""
+        print_success "✅ File sharing symlinks created!"
+        echo ""
+        print_info "Access Waydroid files from:"
+        echo "  📁 ~/WaydroidDownload   → Android Downloads"
+        echo "  📁 ~/WaydroidPictures   → Android Pictures"
+        echo "  📁 ~/WaydroidDocuments  → Android Documents"
+        echo "  📁 ~/WaydroidDCIM       → Android Camera"
+        echo ""
+        print_info "How to use:"
+        echo "  1. Copy files to ~/WaydroidDownload (or other folders)"
+        echo "  2. Files appear instantly in Android - no restart needed!"
+        echo "  3. Changes work both ways (Linux ↔ Android)"
+        echo ""
+        
+        if ! groups | grep -q "waydroid"; then
+            print_warning "IMPORTANT: You must re-login or reboot for group permissions to take effect!"
+            read -p "Reboot now to apply group permissions? (y/N): " do_reboot
+            if [[ "$do_reboot" =~ ^[Yy]$ ]]; then
+                print_info "Rebooting system..."
+                sudo reboot
+            else
+                print_info "Remember to reboot later: sudo reboot"
+            fi
         fi
     fi
 fi
