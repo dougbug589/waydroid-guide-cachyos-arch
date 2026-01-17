@@ -962,30 +962,13 @@ Creates symbolic links to access Waydroid folders directly from your Linux home 
 - ✅ Changes appear instantly
 - ✅ Simpler setup and maintenance
 - ✅ No restart needed
+- ✅ Safe approach - doesn't touch existing Android folders
 
-#### Setup Steps
+#### Quick Setup (Single Shared Folder)
 
-**Step 1: Navigate to Waydroid data folder**
+**Recommended for automated installer users:**
 
-```bash
-cd ~/.local/share/waydroid/data
-```
-
-**Step 2: Check media folder permissions**
-
-```bash
-ls -ld media
-```
-
-This will show the folder's group (typically 1023).
-
-**Step 3: Check your current groups**
-
-```bash
-groups
-```
-
-**Step 4: Add yourself to the Waydroid media group**
+**Step 1: Add yourself to Waydroid media group**
 
 Replace `username` with your actual username:
 
@@ -993,69 +976,82 @@ Replace `username` with your actual username:
 sudo echo "waydroid:x:1023:username" >> /etc/group
 ```
 
-**Step 5: Reboot your system**
+**Step 2: Reboot your system**
 
 ```bash
 reboot
 ```
 
-**Step 6: Verify group membership**
-
-After rebooting, check that you're now in the group:
+**Step 3: Create a dedicated shared folder**
 
 ```bash
-groups
+# Create folder in Waydroid's internal storage
+mkdir -p ~/.local/share/waydroid/data/media/0/Waydroid
+
+# Create symlink from home directory
+ln -s ~/.local/share/waydroid/data/media/0/Waydroid ~/Waydroid
 ```
 
-**Step 7: Create symbolic links**
-
-Create a symlink to Waydroid's Download folder (or any other folder):
+**Done!** Now you can access:
+- **Linux:** `~/Waydroid`
+- **Android:** `Internal storage/Waydroid`
 
 ```bash
+# Copy files to Waydroid
+cp myfile.pdf ~/Waydroid/
+
+# Open in file manager
+xdg-open ~/Waydroid
+```
+
+---
+
+#### Advanced Setup (Link to Existing Android Folders)
+
+**For users who want direct access to Android's system folders (Download, Pictures, etc.):**
+
+⚠️ **Warning:** This links to existing Android folders where apps store their data. Only use if you understand the implications.
+
+**Step 1-2:** Same as Quick Setup (add to group and reboot)
+
+**Step 3: Create symbolic links to Android folders**
+
+Link to specific Android folders as needed:
+
+```bash
+# Downloads folder
 ln --symbolic ~/.local/share/waydroid/data/media/0/Download ~/WaydroidDownload
-```
 
-You can create links to other folders as needed:
-
-```bash
-# For Pictures
+# Pictures folder
 ln --symbolic ~/.local/share/waydroid/data/media/0/Pictures ~/WaydroidPictures
 
-# For Documents
+# Documents folder
 ln --symbolic ~/.local/share/waydroid/data/media/0/Documents ~/WaydroidDocuments
 
-# For DCIM (Camera)
+# DCIM folder (Camera)
 ln --symbolic ~/.local/share/waydroid/data/media/0/DCIM ~/WaydroidDCIM
 ```
 
-#### Usage
-
-Now anything you put in `~/WaydroidDownload` from Linux will be instantly visible in Waydroid's Download folder, and vice versa.
-
-**From Linux:**
+**Usage:**
 
 ```bash
-# List files in Waydroid's Download folder
+# Access Android's Download folder from Linux
 ls ~/WaydroidDownload
 
-# Copy a file to Waydroid
+# Copy file to Android Downloads
 cp myfile.pdf ~/WaydroidDownload/
 
-# Open Waydroid's Downloads in file manager
+# Open folder in file manager
 xdg-open ~/WaydroidDownload
 ```
 
 **From Android (Waydroid):**
 
-1. Open any **File Manager** app
-2. Navigate to **Download**, **Pictures**, **Documents**, etc.
-3. Files placed via the symlinks will be instantly visible!
-
 #### Troubleshooting Symlinks
 
 **"Permission denied" when accessing symlinks:**
 
-Make sure you completed Steps 4-6 to add yourself to the waydroid group and rebooted.
+Make sure you added yourself to the waydroid group and rebooted.
 
 Verify you're in the group:
 ```bash
@@ -1090,8 +1086,8 @@ A **symbolic link** (symlink) is a special file that points to another file or d
 ln --symbolic <target> <link_name>
 ```
 
-- **target:** The Waydroid folder (`~/.local/share/waydroid/data/media/0/Download`)
-- **link_name:** The symlink location (`~/WaydroidDownload`)
+- **target:** The Waydroid folder (e.g., `~/.local/share/waydroid/data/media/0/Waydroid`)
+- **link_name:** The symlink location (e.g., `~/Waydroid`)
 - **--symbolic:** Creates a symbolic link (can span filesystems)
 
 **Why add to group 1023?**
@@ -1103,7 +1099,10 @@ Waydroid's media storage uses Android's permission system. The `media` folder is
 If you want to remove the symlinks:
 
 ```bash
-# Remove symlinks
+# Remove single shared folder symlink
+rm ~/Waydroid
+
+# Or remove multiple symlinks (if you created them)
 rm ~/WaydroidDownload
 rm ~/WaydroidPictures
 rm ~/WaydroidDocuments

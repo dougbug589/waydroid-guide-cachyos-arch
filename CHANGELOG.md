@@ -2,6 +2,35 @@
 
 All notable changes and fixes to the Waydroid installation script.
 
+## [2026-01-17] - File Sharing Method Update
+
+### Changed
+- **Replaced bind mount with symlink method for file sharing**
+  - Automated script now uses safer symlink approach
+  - Creates single `~/Waydroid` folder instead of linking to existing Android folders
+  - No longer touches user's Downloads, Pictures, Documents, or DCIM
+  - Symlinks new dedicated folder: `~/Waydroid` ↔ `Internal storage/Waydroid`
+  - No fstab configuration needed
+  - No mounting or restart required
+  - Instant file transfer between Linux and Android
+  - Based on community solution from [waydroid/waydroid#2150](https://github.com/waydroid/waydroid/discussions/2150)
+
+### Documentation
+- **Consolidated all documentation into README.md**
+  - Removed separate SHARED_FOLDER_GUIDE.md
+  - All file sharing instructions now in README
+  - Manual section shows both symlink (recommended) and bind mount methods
+  - Single comprehensive documentation file
+
+### Security
+- **Improved safety of automated file sharing setup**
+  - No longer creates symlinks to existing Android system folders
+  - Creates dedicated new folder for sharing
+  - Follows better security practices
+  - Safer for user data
+
+---
+
 ## [2026-01-13] - Major Improvements & Bug Fixes
 
 ### Added Features
