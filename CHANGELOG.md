@@ -2,6 +2,56 @@
 
 All notable changes and fixes to the Waydroid installation script.
 
+## [2026-03-04] - Installer Simplification, Session Stability, and Repo Rename
+
+### Changed
+- **Simplified installer flow to core basics only**
+  - Existing install path now offers:
+    1. Fully remove Waydroid
+    2. Modify existing setup with `waydroid_script`
+    3. Exit
+  - Fresh install path now focuses on: kernel check, install/init, `waydroid_script`, UFW, and symlink sharing
+
+- **Added fresh-install confirmation prompt**
+  - When no install is detected, script now asks:
+    - `Do you want to install Waydroid now? (y/N)`
+  - Prevents accidental installation runs
+
+- **Kernel compatibility failure output simplified**
+  - On unsupported kernels, script exits and lists compatible kernels only
+
+### Added
+- **Safe launcher to reduce reopen/loop issues**
+  - Creates `~/.local/bin/waydroid-safe-launcher`
+  - Creates desktop entry: `Waydroid (Safe)`
+  - Launcher behavior:
+    - Runs `waydroid session stop` before launch
+    - Starts a clean session and opens full UI
+    - Runs `waydroid session stop` automatically on exit via trap
+
+- **Automatic UFW installation and configuration**
+  - If UFW is missing, script installs it automatically
+  - Enables UFW service and applies required rules:
+    - allow port 53
+    - allow port 67
+    - `ufw default allow FORWARD`
+
+- **Symlink setup bootstrap for storage path creation**
+  - If Waydroid media path is missing, script starts a session once to initialize storage, waits briefly, then stops session and continues symlink setup
+
+### Documentation
+- **README reduced to a concise basics-only guide**
+  - Removed long advanced/manual sections from top-level docs
+  - Updated script behavior documentation to match current flow
+  - Added safe launcher usage notes
+  - Updated clone instructions for renamed repository
+
+### Repository
+- **Repository renamed**
+  - From: `waydroid-guide-cachyos-arch`
+  - To: `waydroid-installer-archbased`
+  - Local `origin` remote updated accordingly
+
 ## [2026-01-17] - File Sharing Method Update
 
 ### Changed
