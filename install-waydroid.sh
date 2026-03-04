@@ -222,7 +222,6 @@ else
     install_and_run_waydroid_script
     configure_ufw
     setup_safe_waydroid_launcher
-    print_info "Optional shared-folder symlink setup moved to: ./setup-waydroid-share.sh"
 fi
 
 print_success "Done"

@@ -17,7 +17,7 @@ This repo provides a simple script for basic Waydroid setup and maintenance.
 - Installs UFW (if missing), enables it, and applies required Waydroid ports/rules
 - Creates a safe launcher that auto-runs `waydroid session stop` before start and when closing
 
-**Behavior note:** UFW setup is automatic. Shared-folder symlink setup is now a separate script.
+**Behavior note:** UFW setup is automatic. Shared-folder symlink setup is manual.
 
 ## Requirements
 - Arch-based Linux
@@ -33,10 +33,15 @@ git clone https://github.com/dougbug589/waydroid-installer-archbased.git
 cd waydroid-installer-archbased
 chmod +x install-waydroid.sh
 ./install-waydroid.sh
+```
 
-# Optional: set up shared folder symlink
-chmod +x setup-waydroid-share.sh
-./setup-waydroid-share.sh
+## Manual shared-folder symlink setup
+
+Run these commands manually after Waydroid is installed:
+
+```bash
+mkdir -p ~/.local/share/waydroid/data/media/0/Waydroid
+ln -s ~/.local/share/waydroid/data/media/0/Waydroid ~/Waydroid
 ```
 
 ## Kernel compatibility
