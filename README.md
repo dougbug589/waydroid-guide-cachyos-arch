@@ -15,7 +15,7 @@ This repo provides a simple script for basic Waydroid setup and maintenance.
 - Installs and initializes Waydroid images
 - Installs/updates and launches waydroid_script so you can choose modifications
 - Installs UFW (if missing), enables it, and applies required Waydroid ports/rules
-- Optionally sets up symlink shared folder (auto-starts a session once if storage path is missing)
+- Optionally sets up symlink shared folder (creates storage path directly if missing)
 - Creates a safe launcher that auto-runs `waydroid session stop` before start and when closing
 
 **Behavior note:** UFW setup is automatic. Symlink shared-folder setup is optional (`y/N` prompt).

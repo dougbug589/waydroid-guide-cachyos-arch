@@ -194,19 +194,12 @@ setup_symlink_share() {
     local waydroid_shared="$waydroid_data/$shared_folder"
 
     if [[ ! -d "$waydroid_data" ]]; then
-        print_info "Waydroid storage not found yet, starting a session once to create it..."
-        waydroid session start >/dev/null 2>&1 || true
-
-        for _ in {1..20}; do
-            [[ -d "$waydroid_data" ]] && break
-            sleep 1
-        done
-
-        sudo waydroid session stop >/dev/null 2>&1 || true
+        print_info "Waydroid storage path not found, creating it directly..."
+        mkdir -p "$waydroid_data"
     fi
 
     if [[ ! -d "$waydroid_data" ]]; then
-        print_warning "Waydroid storage path is still missing. Start Waydroid once manually, then rerun this script for symlink setup."
+        print_warning "Waydroid storage path is still missing. Please rerun the script after checking permissions."
         return
     fi
 
