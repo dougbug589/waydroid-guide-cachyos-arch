@@ -28,7 +28,7 @@ This repo provides a simple script for basic Waydroid setup and maintenance.
 Clone and run:
 
 ```bash
-git clone https://github.com/dougbug589/waydroid-guide-cachyos-arch.git
+git clone https://github.com/dougbug589/waydroid-installer-archbased.git
 cd waydroid-guide-cachyos-arch
 chmod +x install-waydroid.sh
 ./install-waydroid.sh
