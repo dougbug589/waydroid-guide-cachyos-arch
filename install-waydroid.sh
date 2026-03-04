@@ -248,6 +248,12 @@ if detect_existing_install; then
     esac
 else
     print_info "No existing Waydroid installation found"
+    read -p "Do you want to install Waydroid now? (y/N): " do_install
+    if [[ ! "$do_install" =~ ^[Yy]$ ]]; then
+        print_info "Installation cancelled"
+        exit 0
+    fi
+
     check_kernel_compatibility
     install_and_init_waydroid
     install_and_run_waydroid_script
