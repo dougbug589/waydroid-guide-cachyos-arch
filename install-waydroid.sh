@@ -195,7 +195,10 @@ setup_symlink_share() {
 
     if [[ ! -d "$waydroid_data" ]]; then
         print_info "Waydroid storage path not found, creating it directly..."
-        mkdir -p "$waydroid_data"
+        if ! mkdir -p "$waydroid_data" 2>/dev/null; then
+            sudo mkdir -p "$waydroid_data"
+            sudo chown "$SCRIPT_USER":"$SCRIPT_USER" "$waydroid_data"
+        fi
     fi
 
     if [[ ! -d "$waydroid_data" ]]; then
@@ -212,7 +215,10 @@ setup_symlink_share() {
         print_warning "Re-login/reboot required for new group permissions"
     fi
 
-    mkdir -p "$waydroid_shared"
+    if ! mkdir -p "$waydroid_shared" 2>/dev/null; then
+        sudo mkdir -p "$waydroid_shared"
+        sudo chown "$SCRIPT_USER":"$SCRIPT_USER" "$waydroid_shared"
+    fi
     if [[ ! -e "$symlink_path" ]]; then
         ln -s "$waydroid_shared" "$symlink_path"
     fi
