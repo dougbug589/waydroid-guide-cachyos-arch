@@ -165,21 +165,18 @@ EOF
 }
 
 configure_ufw() {
+    print_step "UFW setup"
+
     if ! command -v ufw &>/dev/null; then
-        print_info "UFW not installed, skipping firewall setup"
-        return
+        print_info "UFW not found, installing..."
+        sudo pacman -S --needed --noconfirm ufw
     fi
 
-    print_step "UFW setup"
-    read -p "Apply UFW rules for Waydroid now? (y/N): " apply_ufw
-    if [[ "$apply_ufw" =~ ^[Yy]$ ]]; then
-        sudo ufw allow 53
-        sudo ufw allow 67
-        sudo ufw default allow FORWARD
-        print_success "UFW rules applied"
-    else
-        print_info "Skipped UFW setup"
-    fi
+    sudo systemctl enable --now ufw
+    sudo ufw --force allow 53
+    sudo ufw --force allow 67
+    sudo ufw default allow FORWARD
+    print_success "UFW installed/enabled and Waydroid rules applied"
 }
 
 setup_symlink_share() {
@@ -196,7 +193,19 @@ setup_symlink_share() {
     local waydroid_shared="$waydroid_data/$shared_folder"
 
     if [[ ! -d "$waydroid_data" ]]; then
-        print_warning "Waydroid storage not found yet. Start a Waydroid session first, then rerun for symlink setup."
+        print_info "Waydroid storage not found yet, starting a session once to create it..."
+        waydroid session start >/dev/null 2>&1 || true
+
+        for _ in {1..20}; do
+            [[ -d "$waydroid_data" ]] && break
+            sleep 1
+        done
+
+        sudo waydroid session stop >/dev/null 2>&1 || true
+    fi
+
+    if [[ ! -d "$waydroid_data" ]]; then
+        print_warning "Waydroid storage path is still missing. Start Waydroid once manually, then rerun this script for symlink setup."
         return
     fi
 
